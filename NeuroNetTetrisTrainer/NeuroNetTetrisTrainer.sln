@@ -1,0 +1,44 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.329
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NeuroNetTetrisTrainer", "NeuroNetTetrisTrainer\NeuroNetTetrisTrainer.vcxproj", "{B73904C4-5587-48D6-830B-8A8E8C017901}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B7C31C1F-EA70-4F55-B0BD-25489C64BF18} = {B7C31C1F-EA70-4F55-B0BD-25489C64BF18}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NeuroNets", "..\NeuroNets\NeuroNets.vcxproj", "{B7C31C1F-EA70-4F55-B0BD-25489C64BF18}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B73904C4-5587-48D6-830B-8A8E8C017901}.Debug|x64.ActiveCfg = Debug|x64
+		{B73904C4-5587-48D6-830B-8A8E8C017901}.Debug|x64.Build.0 = Debug|x64
+		{B73904C4-5587-48D6-830B-8A8E8C017901}.Debug|x86.ActiveCfg = Debug|Win32
+		{B73904C4-5587-48D6-830B-8A8E8C017901}.Debug|x86.Build.0 = Debug|Win32
+		{B73904C4-5587-48D6-830B-8A8E8C017901}.Release|x64.ActiveCfg = Release|x64
+		{B73904C4-5587-48D6-830B-8A8E8C017901}.Release|x64.Build.0 = Release|x64
+		{B73904C4-5587-48D6-830B-8A8E8C017901}.Release|x86.ActiveCfg = Release|Win32
+		{B73904C4-5587-48D6-830B-8A8E8C017901}.Release|x86.Build.0 = Release|Win32
+		{B7C31C1F-EA70-4F55-B0BD-25489C64BF18}.Debug|x64.ActiveCfg = Debug|x64
+		{B7C31C1F-EA70-4F55-B0BD-25489C64BF18}.Debug|x64.Build.0 = Debug|x64
+		{B7C31C1F-EA70-4F55-B0BD-25489C64BF18}.Debug|x86.ActiveCfg = Debug|Win32
+		{B7C31C1F-EA70-4F55-B0BD-25489C64BF18}.Debug|x86.Build.0 = Debug|Win32
+		{B7C31C1F-EA70-4F55-B0BD-25489C64BF18}.Release|x64.ActiveCfg = Release|x64
+		{B7C31C1F-EA70-4F55-B0BD-25489C64BF18}.Release|x64.Build.0 = Release|x64
+		{B7C31C1F-EA70-4F55-B0BD-25489C64BF18}.Release|x86.ActiveCfg = Release|Win32
+		{B7C31C1F-EA70-4F55-B0BD-25489C64BF18}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9D91D706-18B7-4544-A7DF-3FE708F04AF4}
+	EndGlobalSection
+EndGlobal
