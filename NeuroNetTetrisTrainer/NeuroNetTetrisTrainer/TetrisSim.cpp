@@ -19,8 +19,7 @@ void TetrisSim::SpawnBlock()
 	myCurrentRotation = 0;
 
 	myCurrentBlock = myNextBlock;
-	myNextBlock = Tetronimo::O;
-	//static_cast<Tetronimo>(RandomHelper::Rand32(1, 7));
+	myNextBlock = static_cast<Tetronimo>(RandomHelper::Rand32(1, 7));
 
 	if (CheckCollision())	//Instant GameOver
 	{
@@ -65,6 +64,9 @@ void TetrisSim::Clear()
 	memset(myTiles, 0, WIDTH*HEIGHT * sizeof(int));
 	myAccumulatedTime = 0.f;
 	myFrameCounter = 0;
+	
+	myCurrentBlock = static_cast<Tetronimo>(RandomHelper::Rand32(1, 7));
+	myNextBlock = static_cast<Tetronimo>(RandomHelper::Rand32(1, 7));
 
 	myIsGameOver = false;
 	myScore = 0;

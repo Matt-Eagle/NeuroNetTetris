@@ -53,7 +53,7 @@ private:
 	int myTiles[WIDTH*HEIGHT];
 
 	Tetronimo myCurrentBlock = Tetronimo::None;
-	Tetronimo myNextBlock = Tetronimo::I;
+	Tetronimo myNextBlock = Tetronimo::None;
 	int myCurrentYPos;
 	int myCurrentXPos;
 	int myCurrentRotation = 0;

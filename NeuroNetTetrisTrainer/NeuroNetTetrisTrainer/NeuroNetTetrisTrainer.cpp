@@ -8,6 +8,7 @@
 #include "..\..\NeuroNets\EvolutionTrainer.h"
 
 using namespace std;
+static float ourHighScore = 0;
 
 void DrawButton(int button, int chosen)
 {
@@ -29,7 +30,12 @@ void DrawButton(int button, int chosen)
 
 void Draw(TetrisSim& sim, int button)
 {
-		
+
+	for (int i = 0; i < 6; i++)
+		DrawButton(i, button);
+
+	cout << endl << "Score: " << sim.myScore << endl;
+	cout << "HighScore: " << ourHighScore << endl;
 	for (int y = 0; y < HEIGHT; y++)
 	{
 		cout << endl;
@@ -54,10 +60,6 @@ void Draw(TetrisSim& sim, int button)
 
 	cout << endl;
 	system("cls");
-	for (int i = 0; i < 6; i++)
-		DrawButton(i, button);
-	
-	cout << sim.myScore << endl;
 	
 }
 float bool2float(bool b)
@@ -157,7 +159,7 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 {
 	TetrisSim sim;
 	sim.OnEsc();
-	while (!sim.IsGameOver())
+	while (!sim.IsGameOver() && sim.myScore < 1000)
 	{
 		PrepareInput(sim, brain.GetInput());
 		brain.Calculate();
@@ -201,7 +203,8 @@ int main()
 		if(drawer.valid())
 			drawer.wait();
 		//drawer = async([](NeuroNetFloat* n) {return PlayGame(*n, true); }, &trainer.GetChampion());
-		//PlayGame(trainer.GetChampion(), true);	//Visualise the Champion playing
+		ourHighScore = trainer.GetHighScore();
+		PlayGame(trainer.GetChampion(), true);	//Visualise the Champion playing
 		cout << trainer.GetWorstOfGen() << " / " << trainer.GetBestOfGen() << " / " << trainer.GetHighScore() << endl;
 	}
 
