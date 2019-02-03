@@ -67,13 +67,6 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 	myBestOfGen = bestScore->myScore;
 	myChampion = &myPopulation[bestScore->index];
 
-	if (myBestOfGen > myHighScore)
-	{
-		myHighScore = myBestOfGen;
-		myHighScoreGen = myGeneration;
-		
-	}
-
 	float normalizer = -myWorstOfGen;
 	if (myBestOfGen - myWorstOfGen < 0.01f)
 		normalizer += 0.01f;
@@ -121,7 +114,11 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 
 	myGeneration++;
 
-
+	if (myBestOfGen > myHighScore)
+	{
+		myHighScore = myBestOfGen;
+		myHighScoreGen = myGeneration;
+	}
 }
 
 template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>

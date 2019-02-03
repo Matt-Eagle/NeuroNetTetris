@@ -170,7 +170,7 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 	return static_cast<float>(sim.myScore);
 }
 
-#define NUM_GAMES_FOR_SCORE 1
+#define NUM_GAMES_FOR_SCORE 10
 int main()
 {
 	std::cout << "Tetris NeuroNet Trainer" << endl;
@@ -204,7 +204,8 @@ int main()
 			drawer.wait();
 		//drawer = async([](NeuroNetFloat* n) {return PlayGame(*n, true); }, &trainer.GetChampion());
 		ourHighScore = trainer.GetHighScore();
-		PlayGame(trainer.GetChampion(), true);	//Visualise the Champion playing
+		if(trainer.HasNewHighScore())
+			PlayGame(trainer.GetChampion(), true);	//Visualise the Champion playing
 		cout << trainer.GetWorstOfGen() << " / " << trainer.GetBestOfGen() << " / " << trainer.GetHighScore() << endl;
 	}
 
