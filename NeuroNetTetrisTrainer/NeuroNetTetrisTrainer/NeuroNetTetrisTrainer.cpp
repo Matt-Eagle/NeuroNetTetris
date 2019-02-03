@@ -8,55 +8,123 @@
 #include "..\..\NeuroNets\EvolutionTrainer.h"
 
 using namespace std;
-void Draw(TetrisSim& sim)
+
+void DrawButton(int button, int chosen)
 {
-	system("cls");
+	bool isPressed = (button == chosen);
+	cout << (isPressed ? "[" : " ");
+	switch (button)
+	{
+	case 0: cout << "<-"; break;
+	case 1: cout << "->"; break;
+	case 2: cout << "A"; break;
+	case 3: cout << "B"; break;
+	case 4: cout << "^"; break;
+	case 5: cout << "v"; break;
+	default:
+		break;
+	}
+	cout << (isPressed ? "]" : " ");
+}
+
+void Draw(TetrisSim& sim, int button)
+{
+		
 	for (int y = 0; y < HEIGHT; y++)
 	{
 		cout << endl;
 		for (int x = 0; x < WIDTH; x++)
 		{
-			if (sim.GetTile(x, y) > 0)
-				cout << 'X';
-			else
-				cout << '.';
+			int t = sim.GetTile(x, y);
+			switch (t)
+			{
+			case 0: cout << "."; break;
+			case 1: cout << "Z"; break;
+			case 2: cout << "S"; break;
+			case 3: cout << "O"; break;
+			case 4: cout << "I"; break;
+			case 5: cout << "L"; break;
+			case 6: cout << "J"; break;
+			case 7: cout << "T"; break;
+			default:
+				break;
+			}
 		}
 	}
 
-
 	cout << endl;
+	system("cls");
+	for (int i = 0; i < 6; i++)
+		DrawButton(i, button);
+	
 	cout << sim.myScore << endl;
+	
 }
-
+float bool2float(bool b)
+{
+	return b ? 1.0f : 0.0f;
+}
 void PrepareInput(TetrisSim& aSim, float* anOutInput)
 {
-	//Start with the field
+	//Start with the field (200)
 	for (int y = 0; y < HEIGHT; y++)
 	{
 		for (int x = 0; x < WIDTH; x++)
 		{
-			if (aSim.GetTile(x, y) > 0)	//TODO: This actually includes the "our tile" tiles, not the pure game situation. Maybe already enough though...
-				*anOutInput = 1.0f;
-			else
-				*anOutInput = 0.0f;
+			*anOutInput = bool2float(aSim.GetTile(x, y, false) > 0);	//TODO: This actually includes the "our tile" tiles, not the pure game situation. Maybe already enough though...
+			anOutInput++;
 		}
 	}
 
-	//Next up "current block"
-	//aSim.
 
+	//current piece (8)
+	int piece = aSim.GetCurrentPiece();
+	for (int p = 0; p < 8; p++)
+	{
+		*anOutInput = bool2float(piece == p);
+		anOutInput++;
+	}
 
+	//next piece (8)
+	piece = aSim.GetCurrentPiece();
+	for (int p = 0; p < 8; p++)
+	{
+		*anOutInput = bool2float(piece == p);
+		anOutInput++;
+	}
 
+	//xPos (10)
+	int x = aSim.GetCurrentX();
+	for (int p = 0; p < WIDTH; p++)
+	{
+		*anOutInput = bool2float(x == p);
+		anOutInput++;
+	}
 
+	//yPos(20)
+	int y = aSim.GetCurrentY();
+	for (int p = 0; p < HEIGHT; p++)
+	{
+		*anOutInput = bool2float(y == p);
+		anOutInput++;
+	}
+	
+	int r = aSim.GetCurrentY();
+	for (int p = 0; p < 4; p++)
+	{
+		*anOutInput = bool2float(r == p);
+		anOutInput++;
+	}
 	//Total inputsize (est. )
 		// 200 tiles
 		// x/y position (aka 10+20=30 more inputs)
-		// Current Tile (7 more inputs)
-		// Next Tile (7 more inputs)
-		//~244 inputs
+		// Current Tile (8 more inputs)
+		// Next Tile (8 more inputs)
+		//rotation (4)
+		//~250 inputs
 }
 
-void ProcessOutput(TetrisSim& aSim, const float* anOutput)
+int ProcessOutput(TetrisSim& aSim, const float* anOutput)
 {
 	//lets try to take the "suggested" thing first
 	float maxScore = 0.f;
@@ -72,16 +140,17 @@ void ProcessOutput(TetrisSim& aSim, const float* anOutput)
 
 	switch (suggestion)
 	{
-	case 0: aSim.OnLeft(); return;
-	case 1: aSim.OnRight(); return;
-	case 2: aSim.OnA(); return;
-	case 3: aSim.OnB(); return;
-	case 4: aSim.OnDown(); return;
-	case 5: aSim.OnUp(); return;
+	case 0: aSim.OnLeft(); break;
+	case 1: aSim.OnRight(); break;
+	case 2: aSim.OnA(); break;
+	case 3: aSim.OnB(); break;
+	case 4: aSim.OnDown(); break;
+	case 5: aSim.OnUp(); break;
 	default:
-		aSim.OnDown();  return;	//In theory waiting is the same thing as dropping once
+		aSim.OnDown();  break;	//In theory waiting is the same thing as dropping once
 	}
 
+	return suggestion;
 }
 
 float PlayGame(NeuroNetFloat& brain, bool draw = true)
@@ -92,42 +161,48 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 	{
 		PrepareInput(sim, brain.GetInput());
 		brain.Calculate();
-		ProcessOutput(sim, brain.GetOutput());
+		int button = ProcessOutput(sim, brain.GetOutput());
 		sim.Update(0.f, true);
-		if(draw) Draw(sim);
+		if(draw) Draw(sim, button);
 	}
 	return static_cast<float>(sim.myScore);
 }
 
+#define NUM_GAMES_FOR_SCORE 1
 int main()
 {
 	std::cout << "Tetris NeuroNet Trainer" << endl;
 
-	/*NeuroNetBase<> brain({ 200,100,6 });
+	/*NeuroNetBase<> brain({ 250,100,6 });
 	brain.FillRandom();
 */
 	EvolutionTrainer<>::FitnessFunction fitness = [](NeuroNetFloat& brain) {
-
+		
 		float result = 0.f;
-		for(int i=0; i<2; i++)
+		for(int i=0; i< NUM_GAMES_FOR_SCORE; i++)
 			result += PlayGame(brain, false);
-		return result / 2.f;
+		return result / NUM_GAMES_FOR_SCORE;
 	};
 	
 	EvolutionTrainer<> trainer;
 
 	if (!trainer.FromFile("D:\\Tetris_Evo_NN.nnevo"))
-		trainer = EvolutionTrainer<>({ 200,100,50,20,6 }, 1000, 0.5f, 100.f, fitness);
+		trainer = EvolutionTrainer<>({ 250,50,50,6 }, 50, 0.5f, 100.f, fitness);
 	else
 		trainer.SetFitnessFunction(fitness);
-
+	future<float> drawer;
+	
 	while (true)
 	{
 		trainer.TestGeneration();
 		trainer.Evolve();
-		cout << trainer.GetWorstOfGen() << " / " << trainer.GetBestOfGen() << " / " << trainer.GetHighScore() << endl;
+		
 		trainer.SaveToFile("D:\\Tetris_Evo_NN.nnevo");
+		if(drawer.valid())
+			drawer.wait();
+		//drawer = async([](NeuroNetFloat* n) {return PlayGame(*n, true); }, &trainer.GetChampion());
 		//PlayGame(trainer.GetChampion(), true);	//Visualise the Champion playing
+		cout << trainer.GetWorstOfGen() << " / " << trainer.GetBestOfGen() << " / " << trainer.GetHighScore() << endl;
 	}
 
 	std::cout << "Game Over" << endl;

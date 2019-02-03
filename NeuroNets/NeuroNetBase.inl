@@ -115,7 +115,6 @@ void NeuroNetBase<T, AF>::Calculate()
 			srcLayerIndex++;
 		}
 	}
-	int x = 0;
 }
 
 

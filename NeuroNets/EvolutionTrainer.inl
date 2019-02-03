@@ -1,4 +1,5 @@
 #include "EvolutionTrainer.h"
+#include <future>
 
 template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 EvolutionTrainer<T, NeuroNet>::EvolutionTrainer(initializer_list<int> aNeuroNetLayout, int aPopulationSize, float aMutationChance, float aMutationRate, FitnessFunction aFitnessFunction)
@@ -18,18 +19,27 @@ EvolutionTrainer<T, NeuroNet>::EvolutionTrainer(initializer_list<int> aNeuroNetL
 		myPopulation.push_back(nn);
 	}
 }
-
 template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 void EvolutionTrainer<T, NeuroNet>::TestGeneration()
 {
 	if(myFitnessFunction == nullptr)
 		return;	//TODO: Error log
+	vector<future<float>> futures;
+	futures.resize(myPopulationSize);
 
 	for (uint i = 0; i < myPopulationSize; i++)
 	{
 		myScores[i].index = i;
 		myScores[i].picks = 0;
-		myScores[i].myScore = myFitnessFunction(myPopulation[i]);	//TODO: Multithread this, if possible
+		//futures[i]=std::async([](FitnessFunction f, NeuroNet* n) {return f(*n); }, myFitnessFunction, &myPopulation[i]);
+		myScores[i].myScore = myFitnessFunction(myPopulation[i]);
+	}
+
+
+	for (uint i = 0; i < myPopulationSize; i++)
+	{
+		if (futures[i].valid())
+			myScores[i].myScore = futures[i].get();
 	}
 }
 
@@ -55,12 +65,13 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 	myWorstOfGen = std::min_element(myScores.begin(), myScores.end(), [](const Score& a, const Score& b) { return a.myScore < b.myScore; })->myScore;
 	auto bestScore =  std::max_element(myScores.begin(), myScores.end(), [](const Score& a, const Score& b) { return a.myScore < b.myScore; });
 	myBestOfGen = bestScore->myScore;
-	
+	myChampion = &myPopulation[bestScore->index];
+
 	if (myBestOfGen > myHighScore)
 	{
 		myHighScore = myBestOfGen;
 		myHighScoreGen = myGeneration;
-		myChampion = myPopulation[bestScore->index];
+		
 	}
 
 	float normalizer = -myWorstOfGen;
@@ -84,12 +95,13 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 	auto e = myScores.end();
 
 	//TODO: if "KeepChampion"
-	AgentSmith(myChampion, myPopulation[wr->index]);	//Keep the current Champion unaltered
+	AgentSmith(*myChampion, myPopulation[wr->index]);	//Keep the current Champion unaltered
+	myChampion = &myPopulation[wr->index];
 	wr++;
 
-	while (wr < e && rd < e)
+	while (wr->picks == 0 && rd < e)
 	{
-		while (rd->picks-- > 0)
+		while (rd->picks-- > 1)
 		{
 			AgentSmith(myPopulation[rd->index], myPopulation[wr->index]);
 			
@@ -99,6 +111,12 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 		}
 
 		rd++;
+	}
+	
+	while (wr < e)
+	{
+		MutateSpecies(myPopulation[wr->index]);
+		wr++;
 	}
 
 	myGeneration++;
@@ -117,6 +135,15 @@ void EvolutionTrainer<T, NeuroNet>::MutateSpecies(NeuroNet& aNeuroNet)
 		if (RandomHelper::Rand01() < myMutationChance)
 			nnWeights[i] += RandomHelper::Rand(-myMutationRate, myMutationRate);
 	}
+}
+
+template<typename T, typename NeuroNet>
+inline float EvolutionTrainer<T, NeuroNet>::EvaluateFitness(NeuroNet & aNeuroNet)
+{
+	if (myFitnessFunction)
+		return myFitnessFunction(aNeuroNet);
+
+	return 0;
 }
 
 template<typename T, typename NeuroNet>

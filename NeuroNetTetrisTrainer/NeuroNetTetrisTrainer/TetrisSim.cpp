@@ -19,7 +19,8 @@ void TetrisSim::SpawnBlock()
 	myCurrentRotation = 0;
 
 	myCurrentBlock = myNextBlock;
-	myNextBlock = static_cast<Tetronimo>(RandomHelper::Rand32(1,7));
+	myNextBlock = Tetronimo::O;
+	//static_cast<Tetronimo>(RandomHelper::Rand32(1, 7));
 
 	if (CheckCollision())	//Instant GameOver
 	{
@@ -55,7 +56,7 @@ void TetrisSim::Update(float deltaTime, bool forceFrame)
 	while (myDropTimer < 0)
 	{
 		DropBlock();
-		myDropTimer += 4;
+		myDropTimer += myDropSpeed;
 	}
 }
 
@@ -181,7 +182,7 @@ void TetrisSim::Clear()
 		myCurrentXPos -= direction;
 
 	if (!BoundCorrection() && PreviewDropTile())
-		myDropTimer += 0;	//Random adjustment TODO: Balance this properly (maybe make more intelligent to avoid exploits)
+		myDropTimer += 0;// 3;	//Random adjustment TODO: Balance this properly (maybe make more intelligent to avoid exploits)*/
 }
 
  void TetrisSim::Turn(int direction)
@@ -198,7 +199,8 @@ void TetrisSim::Clear()
 	}
 
 	if (BoundCorrection() && PreviewDropTile())
-		myDropTimer += 0;	//Random adjustment TODO: Balance this properly (maybe make more intelligent to avoid exploits)
+		myDropTimer += 0;// 5;	//Random adjustment TODO: Balance this properly (maybe make more intelligent to avoid exploits)
+
 
 }
 

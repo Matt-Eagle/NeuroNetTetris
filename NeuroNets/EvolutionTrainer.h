@@ -3,7 +3,7 @@
 
 #include "RandomHelper.h"
 #include <limits>
-
+#include <future>
 template<typename T = float, typename NeuroNet = NeuroNetBase<T>>
 class EvolutionTrainer : public TrainingWrapperBase<T,NeuroNet>, public ISelfCreator<EvolutionTrainer<T,NeuroNet>>
 {
@@ -37,13 +37,13 @@ public:
 	float GetWorstOfGen() const { return myWorstOfGen; }
 
 	int   GetPopulationSize() const { return myPopulationSize;}
-	NeuroNet& GetChampion() { return myChampion; }
+	NeuroNet& GetChampion() { return *myChampion; }
 
 private:
 	int  PickOne(float aRandom);
 	void AgentSmith(const NeuroNet& aSmith, NeuroNet& anOther);
 	void MutateSpecies(NeuroNet& aNeuroNet);
-	
+	float EvaluateFitness(NeuroNet& aNeuroNet);
 	//Species Data
 	initializer_list<int> myNeuroNetLayout;
 
@@ -56,7 +56,7 @@ private:
 	//Runtime Data
 	vector<NeuroNet> myPopulation;
 	vector<Score> myScores;
-	NeuroNet myChampion;
+	NeuroNet* myChampion;
 
 	//Stats
 	int myGeneration = 0;

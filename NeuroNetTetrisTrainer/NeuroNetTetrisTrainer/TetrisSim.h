@@ -10,9 +10,10 @@ public:
 	TetrisSim();
 	~TetrisSim();
 
-	int GetTile(int x, int y)
+	int GetTile(int x, int y, bool hideCurrent = false)
 	{
-		if (y >= myCurrentYPos
+		if (!hideCurrent
+			&& y >= myCurrentYPos
 			&& y < (myCurrentYPos + 4)
 			&& x >= myCurrentXPos
 			&& x < (myCurrentXPos + 4)
@@ -29,8 +30,8 @@ public:
 	void OnRight() { if (!myIsGameOver) Move(1); }
 	void OnA()     { if (!myIsGameOver) Turn(-1); }
 	void OnB()     { if (!myIsGameOver) Turn(1); }
-	void OnDown() { if (!myIsGameOver) { DropBlock();	myDropTimer = 60; } }
-	void OnUp() { if (!myIsGameOver) { InstaDrop(); myScore += 3; } }
+	void OnDown() { if (!myIsGameOver) { DropBlock();	myDropTimer = myDropSpeed; } }
+	void OnUp() { if (!myIsGameOver) { InstaDrop(); } }
 
 	void SpawnBlock();
 
@@ -38,7 +39,14 @@ public:
 
 	
 	bool IsGameOver() { return myIsGameOver; }
-	unsigned long long myScore;
+
+	int GetCurrentX() { return myCurrentXPos; }
+	int GetCurrentY() { return myCurrentYPos; }
+	int GetCurrentRotation() { return myCurrentRotation; }
+	int GetCurrentPiece() { return (int)myCurrentBlock; }
+	int GetNextPiece() { return (int)myNextBlock; }
+
+	unsigned long long myScore = 0;
 private:
 	int myFrameCounter = 0;
 	float myAccumulatedTime = 0.0f;
@@ -49,9 +57,9 @@ private:
 	int myCurrentYPos;
 	int myCurrentXPos;
 	int myCurrentRotation = 0;
-	int myDropTimer = 60;
-
-
+	int myDropSpeed = 15;	//How many frames till autodrop
+	int myDropTimer = myDropSpeed;
+	
 	bool myIsGameOver = false;
 
 	void Clear();
