@@ -25,11 +25,11 @@ public:
 	};
 
 	//Controls:
-	void OnEsc()   { if(!myIsGameOver) Clear(); }
-	void OnLeft()  { if (!myIsGameOver) Move(-1); }
+	void OnEsc() { if (!myIsGameOver) Clear(); }
+	void OnLeft() { if (!myIsGameOver) Move(-1); }
 	void OnRight() { if (!myIsGameOver) Move(1); }
-	void OnA()     { if (!myIsGameOver) Turn(-1); }
-	void OnB()     { if (!myIsGameOver) Turn(1); }
+	void OnA() { if (!myIsGameOver) Turn(-1); }
+	void OnB() { if (!myIsGameOver) Turn(1); }
 	void OnDown() { if (!myIsGameOver) { DropBlock();	myDropTimer = myDropSpeed; } }
 	void OnUp() { if (!myIsGameOver) { InstaDrop(); } }
 
@@ -37,9 +37,10 @@ public:
 
 	void Update(float deltaTime, bool forceFrame);
 
-	
+
 	bool IsGameOver() { return myIsGameOver; }
 
+	int GetFrameCounter() { return myFrameCounter; }
 	int GetCurrentX() { return myCurrentXPos; }
 	int GetCurrentY() { return myCurrentYPos; }
 	int GetCurrentRotation() { return myCurrentRotation; }

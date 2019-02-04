@@ -35,8 +35,8 @@ private:
 	static int GetZ(int rotation) {
 		switch (rotation)
 		{
-		case 0: return  0b0000011000110000;
-		case 1: return  0b0000001001100100;
+		case 0: return  0b0000110001100000;
+		case 1: return  0b0010011001000000;
 		default: return 0;
 		}
 
@@ -46,7 +46,7 @@ private:
 		switch (rotation)
 		{
 		case 0: return  0b0000011011000000;
-		case 1: return  0b0000010001100010;
+		case 1: return  0b1000110001000000;
 		default: return 0;
 		}
 	}

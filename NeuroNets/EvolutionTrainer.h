@@ -28,7 +28,8 @@ public:
 	void SetFitnessFunction(FitnessFunction aFitnessFunction) { myFitnessFunction = aFitnessFunction; }
 	void SetMutationChance(float aMutationChance) { myMutationChance = aMutationChance; }
 	void SetMUtationRate(float aMutationRate) { myMutationRate = aMutationRate; }
-
+	void SetAsync(bool aSetAsync) { myTestAsync = true; }
+	void ResetHighScore() { myHighScore = 0; }
 	//Stats
 	int   GetGeneration() const { return myGeneration; }
 	float GetHighScore() const { return myHighScore; }
@@ -52,6 +53,7 @@ private:
 	FitnessFunction myFitnessFunction;
 	float myMutationChance;
 	float myMutationRate;
+	bool myTestAsync;
 	
 	//Runtime Data
 	vector<NeuroNet> myPopulation;

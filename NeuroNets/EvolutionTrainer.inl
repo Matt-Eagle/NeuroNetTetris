@@ -31,8 +31,10 @@ void EvolutionTrainer<T, NeuroNet>::TestGeneration()
 	{
 		myScores[i].index = i;
 		myScores[i].picks = 0;
-		//futures[i]=std::async([](FitnessFunction f, NeuroNet* n) {return f(*n); }, myFitnessFunction, &myPopulation[i]);
-		myScores[i].myScore = myFitnessFunction(myPopulation[i]);
+		if(myTestAsync)
+			futures[i]=std::async([](FitnessFunction f, NeuroNet* n) {return f(*n); }, myFitnessFunction, &myPopulation[i]);
+		else
+			myScores[i].myScore = myFitnessFunction(myPopulation[i]);
 	}
 
 

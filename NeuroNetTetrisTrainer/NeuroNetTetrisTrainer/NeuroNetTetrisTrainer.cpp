@@ -73,7 +73,7 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput)
 	{
 		for (int x = 0; x < WIDTH; x++)
 		{
-			*anOutInput = bool2float(aSim.GetTile(x, y, false) > 0);	//TODO: This actually includes the "our tile" tiles, not the pure game situation. Maybe already enough though...
+			*anOutInput = bool2float(aSim.GetTile(x, y, true) > 0);	//TODO: This actually includes the "our tile" tiles, not the pure game situation. Maybe already enough though...
 			anOutInput++;
 		}
 	}
@@ -130,14 +130,22 @@ int ProcessOutput(TetrisSim& aSim, const float* anOutput)
 {
 	//lets try to take the "suggested" thing first
 	float maxScore = 0.f;
-	int suggestion = 7;	//the "Don't move" thing
+	
+	float sum = 0.0f;
+	for (int i = 0; i < 6; i++)
+		sum += anOutput[i];
+	
+	float pickRand = RandomHelper::Rand(0.0f, sum);
+	int suggestion = 7;//Do nothing
 	for (int i = 0; i < 6; i++)
 	{
-		if (anOutput[i] > maxScore)
+		pickRand -= anOutput[i];
+		if (pickRand < 0)
 		{
-			maxScore = anOutput[i];
 			suggestion = i;
+			break;
 		}
+		
 	}
 
 	switch (suggestion)
@@ -159,7 +167,7 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 {
 	TetrisSim sim;
 	sim.OnEsc();
-	while (!sim.IsGameOver() && sim.myScore < 1000)
+	while (!sim.IsGameOver() && sim.GetFrameCounter() < 108000)	//Restrict time to 2h of simulated playtime, as apparently some AIs think it's funny to rotate pieces on the ground to exploit the bounds correction!
 	{
 		PrepareInput(sim, brain.GetInput());
 		brain.Calculate();
@@ -170,7 +178,7 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 	return static_cast<float>(sim.myScore);
 }
 
-#define NUM_GAMES_FOR_SCORE 10
+#define NUM_GAMES_FOR_SCORE 100
 int main()
 {
 	std::cout << "Tetris NeuroNet Trainer" << endl;
@@ -189,9 +197,13 @@ int main()
 	EvolutionTrainer<> trainer;
 
 	if (!trainer.FromFile("D:\\Tetris_Evo_NN.nnevo"))
-		trainer = EvolutionTrainer<>({ 250,50,50,6 }, 50, 0.5f, 100.f, fitness);
+		trainer = EvolutionTrainer<>({ 250,50,50,6 }, 50, 0.5f, 0.5f, fitness);
 	else
 		trainer.SetFitnessFunction(fitness);
+	
+	trainer.SetAsync(true);
+	trainer.ResetHighScore();	//Let's reset the highscore so we see a bit more action
+
 	future<float> drawer;
 	
 	while (true)

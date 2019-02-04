@@ -223,7 +223,7 @@ void TetrisSim::Clear()
 	{
 		myCurrentYPos--;
 		if (!preview)
-		{
+		{			
 			PersistBlockToMap();
 			myScore += 2;
 			RemoveSolvedLines();

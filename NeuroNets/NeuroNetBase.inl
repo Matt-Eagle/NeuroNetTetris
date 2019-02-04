@@ -91,6 +91,7 @@ void NeuroNetBase<T, AF>::Calculate()
 		return;
 
 	int srcLayerIndex = 0;
+	int srcNodeIndex = 0;
 	T* srcLayer = myData;									// Input Layer
 	T* destLayer = myData + myNodeCounts[srcLayerIndex];	// first hidden (or output) layer
 	T* destNode = destLayer;								// first node of dest layer
@@ -99,10 +100,10 @@ void NeuroNetBase<T, AF>::Calculate()
 	while (srcLayerIndex < myLayerCount - 1)
 	{
 		T result = 0;
-		T* srcNode = srcLayer;						// First Node of Layer
+		srcNodeIndex = 0;						// First Node of Layer
 
-		while (srcNode < destLayer)
-			result += *srcNode++ * *weight++;
+		while (srcNodeIndex < myNodeCounts[srcLayerIndex])
+			result += srcLayer[srcNodeIndex++] * *weight++;
 
 		result += *weight++;							// add bias
 
