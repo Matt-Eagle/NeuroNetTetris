@@ -51,6 +51,9 @@
     <ClInclude Include="ISelfCreator.h">
       <Filter>Helpers</Filter>
     </ClInclude>
+    <ClInclude Include="ConsoleDrawHelper.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -70,6 +73,9 @@
     </ClCompile>
     <ClCompile Include="ISelfCreator.inl">
       <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="ConsoleDrawHelper.cpp">
+      <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

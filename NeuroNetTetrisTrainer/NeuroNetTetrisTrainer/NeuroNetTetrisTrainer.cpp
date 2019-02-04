@@ -6,6 +6,7 @@
 #include "TetrisSim.h"
 #include "..\..\NeuroNets\NeuroNetBase.h"
 #include "..\..\NeuroNets\EvolutionTrainer.h"
+#include "..\..\NeuroNets\ConsoleDrawHelper.h"
 
 using namespace std;
 static float ourHighScore = 0;
@@ -30,7 +31,8 @@ void DrawButton(int button, int chosen)
 
 void Draw(TetrisSim& sim, int button)
 {
-
+	ConsoleDraw::StartFrame();
+	ConsoleDraw::SetCursorPosition(0, 1);
 	for (int i = 0; i < 6; i++)
 		DrawButton(i, button);
 
@@ -38,9 +40,10 @@ void Draw(TetrisSim& sim, int button)
 	cout << "HighScore: " << ourHighScore << endl;
 	for (int y = 0; y < HEIGHT; y++)
 	{
-		cout << endl;
+		cout << endl << "  ";
 		for (int x = 0; x < WIDTH; x++)
 		{
+			
 			int t = sim.GetTile(x, y);
 			switch (t)
 			{
@@ -59,7 +62,7 @@ void Draw(TetrisSim& sim, int button)
 	}
 
 	cout << endl;
-	system("cls");
+	ConsoleDraw::EndFrame();
 	
 }
 float bool2float(bool b)
@@ -167,13 +170,17 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 {
 	TetrisSim sim;
 	sim.OnEsc();
+	if (draw)
+		ConsoleDraw::cls();
+
 	while (!sim.IsGameOver() && sim.GetFrameCounter() < 108000)	//Restrict time to 2h of simulated playtime, as apparently some AIs think it's funny to rotate pieces on the ground to exploit the bounds correction!
 	{
 		PrepareInput(sim, brain.GetInput());
 		brain.Calculate();
 		int button = ProcessOutput(sim, brain.GetOutput());
 		sim.Update(0.f, true);
-		if(draw) Draw(sim, button);
+		if(draw) 
+			Draw(sim, button);
 	}
 	return static_cast<float>(sim.myScore);
 }
@@ -181,6 +188,9 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 #define NUM_GAMES_FOR_SCORE 100
 int main()
 {
+	ConsoleDraw::SetTargetFPS(60);
+	ConsoleDraw::SetCursorVisibility(false);
+
 	std::cout << "Tetris NeuroNet Trainer" << endl;
 
 	/*NeuroNetBase<> brain({ 250,100,6 });

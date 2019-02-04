@@ -149,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="ActivationFunctions.h" />
     <ClInclude Include="BackPropagation.h" />
+    <ClInclude Include="ConsoleDrawHelper.h" />
     <ClInclude Include="EvolutionTrainer.h" />
     <ClInclude Include="ISelfCreator.h" />
     <ClInclude Include="NeuroNetBase.h" />
@@ -159,6 +160,7 @@
     <ClInclude Include="TrainingSet.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ConsoleDrawHelper.cpp" />
     <ClCompile Include="EvolutionTrainer.inl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
