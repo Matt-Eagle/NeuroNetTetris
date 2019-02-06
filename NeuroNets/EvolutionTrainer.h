@@ -28,7 +28,7 @@ public:
 	void SetFitnessFunction(FitnessFunction aFitnessFunction) { myFitnessFunction = aFitnessFunction; }
 	void SetMutationChance(float aMutationChance) { myMutationChance = aMutationChance; }
 	void SetMUtationRate(float aMutationRate) { myMutationRate = aMutationRate; }
-	void SetAsync(bool aSetAsync) { myTestAsync = true; }
+	void SetAsync(bool aSetAsync) { myTestAsync = aSetAsync; }
 	void ResetHighScore() { myHighScore = 0; }
 	//Stats
 	int   GetGeneration() const { return myGeneration; }
@@ -36,6 +36,7 @@ public:
 	bool  HasNewHighScore() const { return myGeneration == myHighScoreGen; }
 	float GetBestOfGen() const { return myBestOfGen; }
 	float GetWorstOfGen() const { return myWorstOfGen; }
+	float GetAverage() const { return myAvgOfGen; }
 
 	int   GetPopulationSize() const { return myPopulationSize;}
 	NeuroNet& GetChampion() { return *myChampion; }
@@ -66,7 +67,7 @@ private:
 	float myHighScore = -std::numeric_limits<T>::max();
 	float myBestOfGen = -std::numeric_limits<T>::max();
 	float myWorstOfGen = -std::numeric_limits<T>::max();
-
+	float myAvgOfGen = -std::numeric_limits<T>::max();
 	//ISelfCreator
 	bool FromFileInternal(ifstream& aFileStream) override;
 	bool SaveToFileInternal(ofstream& aFileStream) const override;

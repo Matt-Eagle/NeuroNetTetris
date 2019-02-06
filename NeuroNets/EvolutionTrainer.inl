@@ -61,7 +61,6 @@ void EvolutionTrainer<T, NeuroNet>::AgentSmith(const NeuroNet& aSmith, NeuroNet&
 template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 void EvolutionTrainer<T, NeuroNet>::Evolve()
 {
-	//TODO: We should probably check, if this Generation has been Tested.
 	float sum = 0.f;
 
 	myWorstOfGen = std::min_element(myScores.begin(), myScores.end(), [](const Score& a, const Score& b) { return a.myScore < b.myScore; })->myScore;
@@ -78,6 +77,7 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 		it->myScore += normalizer;
 		sum += it->myScore;
 	}
+	myAvgOfGen = (sum  / myPopulationSize) - normalizer;
 
 	for (uint i = 0; i < myPopulationSize-1; i++)//TODO: the - only if we don't keep the champion
 		PickOne(RandomHelper::Rand(0.f, sum));
