@@ -40,7 +40,7 @@ public:
 
 	int   GetPopulationSize() const { return myPopulationSize;}
 	NeuroNet& GetChampion() { return *myChampion; }
-
+	bool GetChampionChanged() { return championChanged; }
 private:
 	int  PickOne(float aRandom);
 	void AgentSmith(const NeuroNet& aSmith, NeuroNet& anOther);
@@ -60,6 +60,7 @@ private:
 	vector<NeuroNet> myPopulation;
 	vector<Score> myScores;
 	NeuroNet* myChampion;
+	bool championChanged;
 
 	//Stats
 	int myGeneration = 0;

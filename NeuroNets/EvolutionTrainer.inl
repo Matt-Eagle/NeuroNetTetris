@@ -29,12 +29,12 @@ void EvolutionTrainer<T, NeuroNet>::TestGeneration()
 
 	for (uint i = 0; i < myPopulationSize; i++)
 	{
-		myScores[i].index = i;
-		myScores[i].picks = 0;
 		if(myTestAsync)
 			futures[i]=std::async([](FitnessFunction f, NeuroNet* n) {return f(*n); }, myFitnessFunction, &myPopulation[i]);
 		else
 			myScores[i].myScore = myFitnessFunction(myPopulation[i]);
+		myScores[i].index = i;
+		myScores[i].picks = 0;
 	}
 
 
@@ -66,7 +66,15 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 	myWorstOfGen = std::min_element(myScores.begin(), myScores.end(), [](const Score& a, const Score& b) { return a.myScore < b.myScore; })->myScore;
 	auto bestScore =  std::max_element(myScores.begin(), myScores.end(), [](const Score& a, const Score& b) { return a.myScore < b.myScore; });
 	myBestOfGen = bestScore->myScore;
-	myChampion = &myPopulation[bestScore->index];
+	NeuroNet* newChampion = &myPopulation[bestScore->index];
+	if (myChampion != newChampion)
+	{
+		myChampion = newChampion;
+		championChanged = true;
+	}
+	else
+		championChanged = false;
+
 
 	float normalizer = -myWorstOfGen;
 	if (myBestOfGen - myWorstOfGen < 0.01f)
@@ -94,14 +102,18 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 	myChampion = &myPopulation[wr->index];
 	wr++;
 
-	while (wr->picks == 0 && rd < e)
+	vector<future<void>> futures;
+	futures.resize(myPopulationSize);
+	int futureIdx = 1;
+
+	while (wr->picks <= 0 && rd < e)
 	{
 		while (rd->picks-- > 1)
 		{
 			AgentSmith(myPopulation[rd->index], myPopulation[wr->index]);
 			
-			MutateSpecies(myPopulation[wr->index]);
-
+		//	MutateSpecies(myPopulation[wr->index]);
+			futures[futureIdx++] = std::async([&](NeuroNet* n) {return MutateSpecies(*n); }, &myPopulation[wr->index]);
 			wr++;
 		}
 
@@ -110,16 +122,22 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 	
 	while (wr < e)
 	{
-		MutateSpecies(myPopulation[wr->index]);
+		//MutateSpecies(myPopulation[wr->index]);
+		futures[futureIdx++] = std::async([&](NeuroNet* n) {return MutateSpecies(*n); }, &myPopulation[wr->index]);
 		wr++;
 	}
-
+	
 	myGeneration++;
 
 	if (myBestOfGen > myHighScore)
 	{
 		myHighScore = myBestOfGen;
 		myHighScoreGen = myGeneration;
+	}
+
+	for (uint i = 1; i < myPopulationSize; i++)
+	{
+		futures[i].wait();
 	}
 }
 
