@@ -28,15 +28,42 @@ void DrawButton(int button, int chosen)
 	}
 	cout << (isPressed ? "]" : " ");
 }
-
-void Draw(TetrisSim& sim, int button)
+char binToX(int i, int idx)
+{
+	return (i & (1 << idx)) ? 'X' : ' ';
+}
+void DrawNext(TetrisSim& sim)
+{
+	int nextPiece = Tetronimos::GetTetronimo(sim.GetNextPiece(),0);
+	ConsoleDraw::SetCursorPosition(14, 5);
+	cout << "Next: ";
+	ConsoleDraw::SetCursorPosition(14, 6);
+	for (int i = 0; i < 4; i++)
+		cout << binToX(nextPiece, 15-i);
+	ConsoleDraw::SetCursorPosition(14, 7);
+	for (int i = 0; i < 4; i++)
+		cout << binToX(nextPiece, 11-i);
+	ConsoleDraw::SetCursorPosition(14, 8);
+	for (int i = 0; i < 4; i++)
+		cout << binToX(nextPiece, 7-i);
+	ConsoleDraw::SetCursorPosition(14, 9);
+	for (int i = 0; i < 4; i++)
+		cout << binToX(nextPiece, 3-i);
+}
+void Draw(TetrisSim& sim, int button, const float* anOutput)
 {
 	ConsoleDraw::StartFrame();
+	DrawNext(sim);
 	ConsoleDraw::SetCursorPosition(0, 1);
 	for (int i = 0; i < 6; i++)
 		DrawButton(i, button);
 
-	cout << endl << "Score: " << sim.myScore << endl;
+	cout << endl;
+	for (int i = 0; i < 7; i++)
+		cout << anOutput[i] << "; ";
+
+	cout << endl;
+	cout << "Score: " << sim.myScore << endl;
 	cout << "HighScore: " << ourHighScore << endl;
 	for (int y = 0; y < HEIGHT; y++)
 	{
@@ -44,7 +71,7 @@ void Draw(TetrisSim& sim, int button)
 		for (int x = 0; x < WIDTH; x++)
 		{
 			
-			int t = sim.GetTile(x, y);
+			int t = sim.GetTile(x, y);			
 			switch (t)
 			{
 			case 0: cout << "."; break;
@@ -69,14 +96,27 @@ float bool2float(bool b)
 {
 	return b ? 1.0f : 0.0f;
 }
-void PrepareInput(TetrisSim& aSim, float* anOutInput)
+float twoBool2float(bool a, bool b)
+{
+	float result = 0.f;
+	if (a)
+		result += 0.5f;
+	if (b)
+		result += 0.5f;
+	return result;
+}
+
+int ourInputCount = 0;
+void PrepareInput(TetrisSim& aSim, float* anOutInput, int lastAction)
 {
 	//Start with the field (200)
 	for (int y = 0; y < HEIGHT; y++)
 	{
 		for (int x = 0; x < WIDTH; x++)
 		{
-			*anOutInput = bool2float(aSim.GetTile(x, y, true) > 0);	//TODO: This actually includes the "our tile" tiles, not the pure game situation. Maybe already enough though...
+			int w = aSim.GetTile(x, y);
+			int wo = aSim.GetTile(x, y, true);
+			*anOutInput = twoBool2float(w>0, wo>0);	//TODO: This actually includes the "our tile" tiles, not the pure game situation. Maybe already enough though...
 			anOutInput++;
 		}
 	}
@@ -91,7 +131,7 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput)
 	}
 
 	//next piece (8; incl. "none")
-	piece = aSim.GetCurrentPiece();
+	piece = aSim.GetNextPiece();
 	for (int p = 0; p < 8; p++)
 	{
 		*anOutInput = bool2float(piece == p);
@@ -108,7 +148,7 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput)
 
 	//yPos(19; from 0 to 18, as being in idx 18 makes the bottom part always be on the ground)
 	int y = aSim.GetCurrentY();
-	for (int p = -1; p < HEIGHT; p++)
+	for (int p = -1; p < HEIGHT-2; p++)	//17 is the last Y coordinate
 	{
 		*anOutInput = bool2float(y == p);
 		anOutInput++;
@@ -121,27 +161,48 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput)
 		*anOutInput = bool2float(r == p);
 		anOutInput++;
 	}
+
+	for (int p = 0; p < 6; p++)
+	{
+		*anOutInput = bool2float(lastAction == p);
+		anOutInput++;
+	}
 	//Total inputsize (est. )
 		// 200 tiles
 		// Current Tile (8 more inputs)
 		// Next Tile (8 more inputs)
 		// x/y position (aka 10+19=29 more inputs)
 		// rotation (4)
-		//249 inputs
+		// what did i do last turn? (6)
+		
+		//255 inputs
 }
 
 int ProcessOutput(TetrisSim& aSim, const float* anOutput)
 {
 	//lets try to take the "suggested" thing first
-	float maxScore = 0.f;
-	
+	float maxScore = 0.0;//*std::max_element(anOutput, anOutput+7, [](float a, float b) { return a < b; });
+	int suggestion = 6;//Do nothing
+	/*float highScores[7];
+
+	float epsilon = 0.03f;
+
+	for (int i = 0; i < 7; i++)
+		if (abs(anOutput[i] / maxScore) > 1.f-epsilon)
+			highScores[i] = anOutput[i];
+		else
+			highScores[i] = 0.f;*/
+/*
+
 	float sum = 0.0f;
-	for (int i = 0; i < 6; i++)
+	for (int i = 0; i < 7; i++)
 		sum += anOutput[i];
 	
+	
+	
 	float pickRand = RandomHelper::Rand(0.0f, sum);
-	int suggestion = 7;//Do nothing
-	for (int i = 0; i < 6; i++)
+	
+	for (int i = 0; i < 7; i++)
 	{
 		pickRand -= anOutput[i];
 		if (pickRand < 0)
@@ -150,7 +211,15 @@ int ProcessOutput(TetrisSim& aSim, const float* anOutput)
 			break;
 		}
 		
-	}
+	}*/
+	for(int i=0; i<6;i++)
+		if (maxScore <= anOutput[i])
+		{
+			suggestion = i;
+			maxScore = anOutput[i];
+		}
+
+
 
 	switch (suggestion)
 	{
@@ -173,23 +242,24 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 	sim.OnEsc();
 	if (draw)
 		ConsoleDraw::cls();
-
+	int button = 6;
 	while (!sim.IsGameOver() && sim.GetFrameCounter() < 36000)	//Restrict time to 2h of simulated playtime, as apparently some AIs think it's funny to rotate pieces on the ground to exploit the bounds correction!
 	{
-		PrepareInput(sim, brain.GetInput());
+		PrepareInput(sim, brain.GetInput(), button);
 		brain.Calculate();
-		int button = ProcessOutput(sim, brain.GetOutput());
+		const float* output = brain.GetOutput();
+		button = ProcessOutput(sim, output);
 		for (int i = 0; i < 7; i++)
 		{
 			sim.Update(0.f, true);
 			if (draw)
-				Draw(sim, button);
+				Draw(sim, button, output);
 		}
 	}
 	return static_cast<float>(sim.myScore);
 }
 
-#define NUM_GAMES_FOR_SCORE 5
+#define NUM_GAMES_FOR_SCORE 1
 int main()
 {
 	ConsoleDraw::SetTargetFPS(60);
@@ -210,31 +280,39 @@ int main()
 		}
 		//tryout: max score of all games instead. "several chances for best performance"
 		sort(results, results + NUM_GAMES_FOR_SCORE);
-		return results[NUM_GAMES_FOR_SCORE / 2];
+		return results[0];
 	};
 	
 	EvolutionTrainer<> trainer;
 
 	if (!trainer.FromFile("D:\\Tetris_Evo_NN.nnevo"))
-		trainer = EvolutionTrainer<>({ 249,250,250,7 }, 250, 0.5f, 0.5f, fitness);
+		trainer = EvolutionTrainer<>({ 255,510,350,250,50,7 }, 250, 0.01f, 0.001f, fitness);
 	else
 		trainer.SetFitnessFunction(fitness);
 	
-	trainer.SetMutationChance(0.3f);
-	trainer.SetMUtationRate(0.5f);
+	trainer.SetMutationChance(0.1f);
+	trainer.SetMUtationRate(.1f);
 	trainer.SetAsync(true);
 	trainer.ResetHighScore();	//Let's reset the highscore so we see a bit more action
 
-	
+	int saveCounter = 0;
 	while (true)
 	{
 		trainer.TestGeneration();
 		trainer.Evolve();
-		trainer.SaveToFile("D:\\Tetris_Evo_NN.nnevo");
+		if (++saveCounter == 10)
+		{
+			trainer.SaveToFile("D:\\Tetris_Evo_NN.nnevo");
+			saveCounter = 0;
+		}
 		ourHighScore = trainer.GetHighScore();
-		if(trainer.HasNewHighScore())
-			PlayGame(trainer.GetChampion(), true);	//Visualise the Champion playing
-		cout << trainer.GetWorstOfGen() << " / " << trainer.GetAverage() << " / " << trainer.GetBestOfGen() << " / " << trainer.GetHighScore() << endl;
+		if (trainer.HasNewHighScore())
+		{
+			for(int i=0;i<1;i++)
+				PlayGame(trainer.GetChampion(), true);	//Visualise the Champion playing
+		}
+		cout << trainer.GetWorstOfGen() << " / " << trainer.GetAverage() << " / " << trainer.GetBestOfGen() << " / " << trainer.GetHighScore() << (trainer.GetChampionChanged() ? " *" : " ") << endl;
+
 
 
 	}
