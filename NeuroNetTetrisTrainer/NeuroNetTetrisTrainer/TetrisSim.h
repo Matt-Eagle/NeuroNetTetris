@@ -45,7 +45,7 @@ public:
 	int GetCurrentY() { return myCurrentYPos; }
 	int GetCurrentRotation() { return myCurrentRotation; }
 	int GetCurrentPiece() { return (int)myCurrentBlock; }
-	int GetNextPiece() { return (int)myNextBlock; }
+	Tetronimo GetNextPiece() { return myNextBlock; }
 
 	unsigned long long myScore = 0;
 private:
@@ -83,7 +83,7 @@ private:
 	bool DropBlock(bool preview = false);
 	void InstaDrop();
 	void StepTile();
-
+	int RandomizePiece(int lastPiece);
 	bool GetCurrentTetronimoTile(int x, int y);
 };
 

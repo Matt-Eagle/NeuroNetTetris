@@ -19,7 +19,7 @@ void TetrisSim::SpawnBlock()
 	myCurrentRotation = 0;
 
 	myCurrentBlock = myNextBlock;
-	myNextBlock = static_cast<Tetronimo>(RandomHelper::Rand32(1, 7));
+	myNextBlock = static_cast<Tetronimo>(RandomizePiece(myNextBlock));
 
 	if (CheckCollision())	//Instant GameOver
 	{
@@ -65,8 +65,8 @@ void TetrisSim::Clear()
 	myAccumulatedTime = 0.f;
 	myFrameCounter = 0;
 	
-	myCurrentBlock = static_cast<Tetronimo>(RandomHelper::Rand32(1, 7));
-	myNextBlock = static_cast<Tetronimo>(RandomHelper::Rand32(1, 7));
+	myCurrentBlock = static_cast<Tetronimo>(RandomizePiece(0));
+	myNextBlock = static_cast<Tetronimo>(RandomizePiece(myCurrentBlock));
 
 	myIsGameOver = false;
 	myScore = 0;
@@ -245,6 +245,16 @@ void TetrisSim::Clear()
  void TetrisSim::StepTile() {
 	myCurrentYPos++;
 }
+
+ int TetrisSim::RandomizePiece(int lastPiece)
+ {
+	/*int next = RandomHelper::Rand32(1, 8);
+	if (next == lastPiece || next == 8)
+		return RandomHelper::Rand32(1, 7);
+	else
+		return next;*/
+	 return (lastPiece % 7) + 1;
+ }
 
  bool TetrisSim::GetCurrentTetronimoTile(int x, int y)
 {
