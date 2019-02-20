@@ -8,6 +8,8 @@ EvolutionTrainer<T, NeuroNet>::EvolutionTrainer(initializer_list<int> aNeuroNetL
 	, myPopulationSize(aPopulationSize)
 	, myFitnessFunction(aFitnessFunction)
 	, myNeuroNetLayout(aNeuroNetLayout)
+	, myKeepTopX(0)
+	, myRandomizeBottomX(0)
 {
 	myPopulation.reserve(myPopulationSize);
 	myScores.resize(myPopulationSize);
@@ -24,6 +26,7 @@ void EvolutionTrainer<T, NeuroNet>::TestGeneration()
 {
 	if(myFitnessFunction == nullptr)
 		return;	//TODO: Error log
+
 	vector<future<float>> futures;
 	futures.resize(myPopulationSize);
 
@@ -36,7 +39,6 @@ void EvolutionTrainer<T, NeuroNet>::TestGeneration()
 		myScores[i].index = i;
 		myScores[i].picks = 0;
 	}
-
 
 	for (uint i = 0; i < myPopulationSize; i++)
 	{
@@ -62,58 +64,80 @@ template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 void EvolutionTrainer<T, NeuroNet>::Evolve()
 {
 	float sum = 0.f;
+	sort(myScores.begin(), myScores.end(), [](const Score& a, const Score& b) { return a.myScore < b.myScore; });
 
-	myWorstOfGen = std::min_element(myScores.begin(), myScores.end(), [](const Score& a, const Score& b) { return a.myScore < b.myScore; })->myScore;
-	auto bestScore =  std::max_element(myScores.begin(), myScores.end(), [](const Score& a, const Score& b) { return a.myScore < b.myScore; });
-	myBestOfGen = bestScore->myScore;
-	NeuroNet* newChampion = &myPopulation[bestScore->index];
-	if (myChampion != newChampion)
+	myWorstOfGen = myScores[0].myScore;
+	Score& bestScore =  myScores[myPopulationSize-1];
+	myBestOfGen = bestScore.myScore;
+	NeuroNet* newChampion = &myPopulation[bestScore.index];
+	
+	//Setup evolution modes
+	for (uint i = 0; i < myPopulationSize; i++)
 	{
-		myChampion = newChampion;
-		championChanged = true;
+		if (i < myRandomizeBottomX)
+			myScores[i].evoMode = Randomize;
+		else if (i < myPopulationSize - myKeepTopX)
+			myScores[i].evoMode = Mutate;
+		else
+			myScores[i].evoMode = Keep;
 	}
-	else
-		championChanged = false;
 
-
-	float normalizer = -myWorstOfGen;
+	myChampionChanged = (myChampion != newChampion);
+	if (myChampionChanged)
+		myChampion = newChampion;
+	
+	float normalizer = -myScores[myRandomizeBottomX].myScore;
 	if (myBestOfGen - myWorstOfGen < 0.01f)
 		normalizer += 0.01f;
 	
-	for (auto it = myScores.begin(); it < myScores.end(); it++)
+	for (auto it = myScores.begin()+myRandomizeBottomX; it < myScores.end(); it++)
 	{
 		it->myScore += normalizer;
 		sum += it->myScore;
 	}
+
 	myAvgOfGen = (sum  / myPopulationSize) - normalizer;
 
-	for (uint i = 0; i < myPopulationSize-1; i++)//TODO: the - only if we don't keep the champion
+	uint numNonMutating = myKeepTopX + myRandomizeBottomX;
+	for (uint i = 0; i < myPopulationSize-numNonMutating; i++)
 		PickOne(RandomHelper::Rand(0.f, sum));
-
-
+	
 	sort(myScores.begin(), myScores.end(), [](const Score& a, const Score& b) { return a.picks < b.picks; });
 
 	auto wr = myScores.begin();
 	auto rd = wr;
 	auto e = myScores.end();
+/*
 
 	//TODO: if "KeepChampion"
 	AgentSmith(*myChampion, myPopulation[wr->index]);	//Keep the current Champion unaltered
 	myChampion = &myPopulation[wr->index];
-	wr++;
+	wr++;*/
 
+	//TODO: Make async mutation a setting?
 	vector<future<void>> futures;
-	futures.resize(myPopulationSize);
-	int futureIdx = 1;
+	futures.resize(myPopulationSize-myKeepTopX);	//TODO: probably popsize - keeps?
+	int futureIdx = 0;
 
 	while (wr->picks <= 0 && rd < e)
 	{
 		while (rd->picks-- > 1)
 		{
-			AgentSmith(myPopulation[rd->index], myPopulation[wr->index]);
-			
-		//	MutateSpecies(myPopulation[wr->index]);
-			futures[futureIdx++] = std::async([&](NeuroNet* n) {return MutateSpecies(*n); }, &myPopulation[wr->index]);
+			switch (wr->evoMode)
+			{
+			case Randomize:
+				futures[futureIdx++] = std::async([](NeuroNet* n) {return n->FillRandom(); }, &myPopulation[wr->index]);
+				break;
+			case Mutate:
+				AgentSmith(myPopulation[rd->index], myPopulation[wr->index]);
+
+				//	MutateSpecies(myPopulation[wr->index]);
+				futures[futureIdx++] = std::async([&](NeuroNet* n) {return MutateSpecies(*n); }, &myPopulation[wr->index]);
+				break;
+			case Keep:
+			default: break;
+			}
+
 			wr++;
 		}
 
@@ -123,7 +147,12 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 	while (wr < e)
 	{
 		//MutateSpecies(myPopulation[wr->index]);
-		futures[futureIdx++] = std::async([&](NeuroNet* n) {return MutateSpecies(*n); }, &myPopulation[wr->index]);
+		if (wr->evoMode == Mutate)
+			futures[futureIdx++] = std::async([&](NeuroNet* n) {return MutateSpecies(*n); }, &myPopulation[wr->index]);
+
+		if (wr->evoMode == Randomize)
+			futures[futureIdx++] = std::async([](NeuroNet* n) {return n->FillRandom(); }, &myPopulation[wr->index]);
+
 		wr++;
 	}
 	
@@ -135,7 +164,7 @@ void EvolutionTrainer<T, NeuroNet>::Evolve()
 		myHighScoreGen = myGeneration;
 	}
 
-	for (uint i = 1; i < myPopulationSize; i++)
+	for (uint i = 1; i < futures.size(); i++)
 	{
 		futures[i].wait();
 	}
@@ -154,29 +183,33 @@ void EvolutionTrainer<T, NeuroNet>::MutateSpecies(NeuroNet& aNeuroNet)
 	}
 }
 
-template<typename T, typename NeuroNet>
-inline float EvolutionTrainer<T, NeuroNet>::EvaluateFitness(NeuroNet & aNeuroNet)
-{
-	if (myFitnessFunction)
-		return myFitnessFunction(aNeuroNet);
 
-	return 0;
+template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
+void EvolutionTrainer<T, NeuroNet>::VersionedReadValueFromFile(ifstream& aFileStream, void* aDestAddr, size_t aDataTypeSize, uint aSaveFileVersion, uint aMinFileVersion, uint aMaxFileVersion)
+{
+	if(aSaveFileVersion >= aMinFileVersion && aSaveFileVersion <= aMaxFileVersion)
+		aFileStream.read((char*)aDestAddr, aDataTypeSize);
 }
+
 
 template<typename T, typename NeuroNet>
 inline bool EvolutionTrainer<T, NeuroNet>::FromFileInternal(ifstream & aFileStream)
 {
 	uint fileVersion = 0;
-	aFileStream.read((char*)&fileVersion, sizeof(unsigned int));		// FileFormat version
-	assert(fileVersion == FileVersion);	//TODO: better error handling
+	aFileStream.read((char*)&fileVersion, sizeof(unsigned int));		// FileFormat version of the savefile
+	{
+		// Read Configuration. Adjust when file version changes
+		VersionedReadValueFromFile(aFileStream, &myPopulationSize, sizeof(int),   fileVersion, 1, UINT_MAX);
+		VersionedReadValueFromFile(aFileStream, &myMutationChance, sizeof(float), fileVersion, 1, UINT_MAX);
+		VersionedReadValueFromFile(aFileStream, &myMutationRate,   sizeof(float), fileVersion, 1, UINT_MAX);
 
-	aFileStream.read((char*)&myPopulationSize, sizeof(int));
-	aFileStream.read((char*)&myMutationChance, sizeof(float));
-	aFileStream.read((char*)&myMutationRate, sizeof(float));
+		VersionedReadValueFromFile(aFileStream, &myKeepTopX,		 sizeof(int), fileVersion, 2, UINT_MAX);
+		VersionedReadValueFromFile(aFileStream, &myRandomizeBottomX, sizeof(int), fileVersion, 2, UINT_MAX);
 
-	aFileStream.read((char*)&myGeneration, sizeof(int));
-	aFileStream.read((char*)&myHighScoreGen, sizeof(int));
-	aFileStream.read((char*)&myHighScore, sizeof(float));
+		VersionedReadValueFromFile(aFileStream, &myGeneration,   sizeof(int), fileVersion, 1, UINT_MAX);
+		VersionedReadValueFromFile(aFileStream, &myHighScoreGen, sizeof(int), fileVersion, 1, UINT_MAX);
+		VersionedReadValueFromFile(aFileStream, &myHighScore,    sizeof(float), fileVersion, 1, UINT_MAX);
+	}
 
 	myPopulation.resize(myPopulationSize);
 
@@ -197,6 +230,9 @@ inline bool EvolutionTrainer<T, NeuroNet>::SaveToFileInternal(ofstream & aFileSt
 	aFileStream.write((const char*)&myMutationChance, sizeof(float));
 	aFileStream.write((const char*)&myMutationRate, sizeof(float));
 
+	aFileStream.write((const char*)&myKeepTopX, sizeof(int));
+	aFileStream.write((const char*)&myRandomizeBottomX, sizeof(int));
+
 	aFileStream.write((const char*)&myGeneration, sizeof(int));
 	aFileStream.write((const char*)&myHighScoreGen, sizeof(int));
 	aFileStream.write((const char*)&myHighScore, sizeof(float));
@@ -213,7 +249,9 @@ inline bool EvolutionTrainer<T, NeuroNet>::SaveToFileInternal(ofstream & aFileSt
 template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 int EvolutionTrainer<T, NeuroNet>::PickOne(float aRandom)
 {
-	for (int i = myPopulationSize - 1; i > 0; i--)
+	//assumes that myScore array is sorted from lowest to highest score
+
+	for (uint i = myPopulationSize - 1; i > myRandomizeBottomX; i--)	//TAM: Should we really exclude the randomized ones from the pick?
 	{
 		if (aRandom < myScores[i].myScore)
 		{
@@ -223,6 +261,6 @@ int EvolutionTrainer<T, NeuroNet>::PickOne(float aRandom)
 		aRandom -= myScores[i].myScore;
 	}
 
-	myScores[0].picks++;
-	return myScores[0].index;
+	myScores[myPopulationSize-1].picks++;
+	return myScores[myPopulationSize-1].index;
 }

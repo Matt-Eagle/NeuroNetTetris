@@ -262,8 +262,9 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 #define NUM_GAMES_FOR_SCORE 1
 int main()
 {
-	ConsoleDraw::SetTargetFPS(60);
+	ConsoleDraw::SetTargetFPS(120);
 	ConsoleDraw::SetCursorVisibility(false);
+	ConsoleDraw::SetFontSize();
 
 	std::cout << "Tetris NeuroNet Trainer" << endl;
 
@@ -285,13 +286,17 @@ int main()
 	
 	EvolutionTrainer<> trainer;
 
-	if (!trainer.FromFile("D:\\Tetris_Evo_NN.nnevo"))
-		trainer = EvolutionTrainer<>({ 255,510,350,250,50,7 }, 250, 0.01f, 0.001f, fitness);
+	if (!trainer.FromFile("D:\\Tetris\\Tetris_Evo_NN.nnevo"))
+		trainer = EvolutionTrainer<>({ 255,350,255,7 }, 250, 0.01f, 0.001f, fitness);
 	else
 		trainer.SetFitnessFunction(fitness);
 	
-	trainer.SetMutationChance(0.1f);
-	trainer.SetMUtationRate(.1f);
+	trainer.SetMutationChance(0.025f);
+	trainer.SetMUtationRate(.01f);
+	trainer.SetKeepTop(1);
+	trainer.SetRandomizeBottom(10);
+
+
 	trainer.SetAsync(true);
 	trainer.ResetHighScore();	//Let's reset the highscore so we see a bit more action
 
@@ -302,7 +307,7 @@ int main()
 		trainer.Evolve();
 		if (++saveCounter == 10)
 		{
-			trainer.SaveToFile("D:\\Tetris_Evo_NN.nnevo");
+			trainer.SaveToFile("D:\\Tetris\\Tetris_Evo_NN.nnevo");
 			saveCounter = 0;
 		}
 		ourHighScore = trainer.GetHighScore();

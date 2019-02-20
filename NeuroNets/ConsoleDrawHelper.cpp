@@ -18,11 +18,12 @@ void ConsoleDrawHelper::cls()
 	ClearArea(0, 0, csbi.dwSize.X, csbi.dwSize.Y);
 	SetConsoleCursorPosition(hOut, { 0,0 });
 }
-void ConsoleDrawHelper::ClearArea(int x, int y, int w, int h)
+void ConsoleDrawHelper::ClearArea(short x, short y, short w, short h)
 {
 	std::cout.flush();
 
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
+
 	// Figure out the current width and height of the console window
 	if (!GetConsoleScreenBufferInfo(hOut, &csbi)) {
 		// TODO: Handle failure!

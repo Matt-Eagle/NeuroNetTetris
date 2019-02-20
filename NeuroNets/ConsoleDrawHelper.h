@@ -18,7 +18,17 @@ public:
 	static unsigned int targetFPS;
 	
 	static void cls();
-	static void ClearArea(int x, int y, int h, int w);
+	static void SetFontSize()
+	{
+		CONSOLE_FONT_INFOEX cfi;
+		cfi.cbSize = sizeof(cfi);
+		cfi.nFont = 0;
+		cfi.dwFontSize.X = 20;                   // Width of each character in the font
+		cfi.dwFontSize.Y = 20;                  // Height
+		
+		SetCurrentConsoleFontEx(hOut, FALSE, &cfi);
+	}
+	static void ClearArea(short x, short y, short h, short w);
 	static void SetCursorVisibility(bool visible);
 	static void SetCursorPosition(short x, short y);
 	static void SetTargetFPS(int fps) { targetFPS = fps; }
@@ -26,7 +36,7 @@ public:
 	static void EndFrame() { 
 		long long frameDuration = chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count() - frameStartTime; 
 		float targetMS = 1000.f / targetFPS;
-		long long frameTimeLeft = targetMS - frameDuration;
+		long long frameTimeLeft = static_cast<long long>(targetMS - frameDuration);
 		
 		this_thread::sleep_for(chrono::milliseconds(frameTimeLeft));
 	}

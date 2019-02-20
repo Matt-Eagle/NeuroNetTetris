@@ -4,16 +4,24 @@
 #include "RandomHelper.h"
 #include <limits>
 #include <future>
+
 template<typename T = float, typename NeuroNet = NeuroNetBase<T>>
 class EvolutionTrainer : public TrainingWrapperBase<T,NeuroNet>, public ISelfCreator<EvolutionTrainer<T,NeuroNet>>
 {
 	typedef TrainingWrapperBase<T, NeuroNet> Super;
 
+	enum EvolutionMode
+	{
+		Keep,
+		Mutate,
+		Randomize
+	};
 	struct Score
 	{
 		int index;
 		float myScore;
 		int picks;
+		EvolutionMode evoMode = Mutate;
 	};
 
 public:
@@ -29,7 +37,10 @@ public:
 	void SetMutationChance(float aMutationChance) { myMutationChance = aMutationChance; }
 	void SetMUtationRate(float aMutationRate) { myMutationRate = aMutationRate; }
 	void SetAsync(bool aSetAsync) { myTestAsync = aSetAsync; }
+	void SetKeepTop(int X) { myKeepTopX = X; }
+	void SetRandomizeBottom(int X) { myRandomizeBottomX = X; }
 	void ResetHighScore() { myHighScore = 0; }
+
 	//Stats
 	int   GetGeneration() const { return myGeneration; }
 	float GetHighScore() const { return myHighScore; }
@@ -40,27 +51,33 @@ public:
 
 	int   GetPopulationSize() const { return myPopulationSize;}
 	NeuroNet& GetChampion() { return *myChampion; }
-	bool GetChampionChanged() { return championChanged; }
+	bool GetChampionChanged() { return myChampionChanged; }
+
 private:
 	int  PickOne(float aRandom);
 	void AgentSmith(const NeuroNet& aSmith, NeuroNet& anOther);
 	void MutateSpecies(NeuroNet& aNeuroNet);
-	float EvaluateFitness(NeuroNet& aNeuroNet);
+
 	//Species Data
 	initializer_list<int> myNeuroNetLayout;
 
-	//Evolution Data
+	//Evolution Settings (Savable)
 	uint   myPopulationSize;
-	FitnessFunction myFitnessFunction;
 	float myMutationChance;
 	float myMutationRate;
+	uint myKeepTopX;				// Keep the top X Species unchanged for the next Generation
+	uint myRandomizeBottomX;		// Introduce X new, completely randomized species 
+
+	//Runtime settings (not savable)
+	FitnessFunction myFitnessFunction;
 	bool myTestAsync;
+
 	
 	//Runtime Data
 	vector<NeuroNet> myPopulation;
 	vector<Score> myScores;
 	NeuroNet* myChampion;
-	bool championChanged;
+	bool myChampionChanged;
 
 	//Stats
 	int myGeneration = 0;
@@ -69,11 +86,13 @@ private:
 	float myBestOfGen = -std::numeric_limits<T>::max();
 	float myWorstOfGen = -std::numeric_limits<T>::max();
 	float myAvgOfGen = -std::numeric_limits<T>::max();
+
 	//ISelfCreator
 	bool FromFileInternal(ifstream& aFileStream) override;
 	bool SaveToFileInternal(ofstream& aFileStream) const override;
+	void VersionedReadValueFromFile(ifstream& aFileStream, void* aDestAddr, size_t aDataTypeSize, uint aSaveFileVersion, uint aMinFileVersion, uint aMaxFileVersion);
 
-	static const uint FileVersion = 1;
+	static const uint FileVersion = 2;
 
 };
 
