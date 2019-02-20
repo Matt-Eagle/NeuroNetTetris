@@ -62,7 +62,7 @@ template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 	 for (unsigned int i = 0; i < aCount; i++)
 	 {
 		 TrainingData<T>& td = myTrainingSet.GetRandomData();
-		 result += TrainBP(myNeuroNet, td.myInputs, td.myTargets, anAlpha);
+		 result += TrainBP(myNeuroNet, td.GetInputs(), td.GetTargets(), anAlpha);
 	 }
 	 return result / aCount;
  }

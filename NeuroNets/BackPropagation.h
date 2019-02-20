@@ -20,10 +20,17 @@ public:
 	T TrainBP(NeuroNet& aNeuroNet, const T* someInputs, const T* someExpectedOutputs, T anAlpha);
 
 	NeuroNet GetNeuroNetClone() { return myNeuroNet; }
+	NeuroNet* GetNeuroNet() { return &myNeuroNet; }
 
 	bool AddTrainingData(int anInputCount, int aTargetCount, const T* someData)
 	{
 		return myTrainingSet.AddTrainingData(anInputCount, aTargetCount, someData);
+	}
+
+	bool SetTrainingData(TrainingSet<T> aTrainingSet)
+	{
+		myTrainingSet = aTrainingSet;
+		return true;
 	}
 	
 	void Calculate() { return myNeuroNet.Calculate(); }
