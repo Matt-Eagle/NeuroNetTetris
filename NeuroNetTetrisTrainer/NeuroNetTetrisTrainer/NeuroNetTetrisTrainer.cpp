@@ -7,6 +7,8 @@
 #include "..\..\NeuroNets\NeuroNetBase.h"
 #include "..\..\NeuroNets\EvolutionTrainer.h"
 #include "..\..\NeuroNets\ConsoleDrawHelper.h"
+#include "..\..\NeuroNets\TrainingSet.h"
+#include "..\..\NeuroNets\BackPropagation.h"
 
 using namespace std;
 static float ourHighScore = 0;
@@ -50,19 +52,10 @@ void DrawNext(TetrisSim& sim)
 	for (int i = 0; i < 4; i++)
 		cout << binToX(nextPiece, 3-i);
 }
-void Draw(TetrisSim& sim, int button, const float* anOutput)
+void DrawGame(TetrisSim& sim)
 {
-	ConsoleDraw::StartFrame();
-	DrawNext(sim);
-	ConsoleDraw::SetCursorPosition(0, 1);
-	for (int i = 0; i < 6; i++)
-		DrawButton(i, button);
 
-	cout << endl;
-	for (int i = 0; i < 7; i++)
-		cout << anOutput[i] << "; ";
-
-	cout << endl;
+	cout << "                          " << endl;
 	cout << "Score: " << sim.myScore << endl;
 	cout << "HighScore: " << ourHighScore << endl;
 	for (int y = 0; y < HEIGHT; y++)
@@ -70,8 +63,8 @@ void Draw(TetrisSim& sim, int button, const float* anOutput)
 		cout << endl << "  ";
 		for (int x = 0; x < WIDTH; x++)
 		{
-			
-			int t = sim.GetTile(x, y);			
+
+			int t = sim.GetTile(x, y);
 			switch (t)
 			{
 			case 0: cout << "."; break;
@@ -87,6 +80,24 @@ void Draw(TetrisSim& sim, int button, const float* anOutput)
 			}
 		}
 	}
+
+	cout << endl;
+
+}
+void Draw(TetrisSim& sim, int button, const float* anOutput)
+{
+	ConsoleDraw::StartFrame();
+	DrawNext(sim);
+	ConsoleDraw::SetCursorPosition(0, 1);
+	
+	cout << endl;
+	for (int i = 0; i < 7; i++)
+		cout << anOutput[i] << "; ";
+
+	for (int i = 0; i < 6; i++)
+		DrawButton(i, button);
+
+	DrawGame(sim);
 
 	cout << endl;
 	ConsoleDraw::EndFrame();
@@ -259,19 +270,14 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 	return static_cast<float>(sim.myScore);
 }
 
+
+
 #define NUM_GAMES_FOR_SCORE 1
-int main()
+
+void EvoTraining()
 {
-	ConsoleDraw::SetTargetFPS(60);
-	ConsoleDraw::SetCursorVisibility(false);
-
-	std::cout << "Tetris NeuroNet Trainer" << endl;
-
-	/*NeuroNetBase<> brain({ 250,100,6 });
-	brain.FillRandom();
-*/
 	EvolutionTrainer<>::FitnessFunction fitness = [](NeuroNetFloat& brain) {
-		
+
 		float results[NUM_GAMES_FOR_SCORE];
 		for (int i = 0; i < NUM_GAMES_FOR_SCORE; i++)
 		{
@@ -282,16 +288,16 @@ int main()
 		sort(results, results + NUM_GAMES_FOR_SCORE);
 		return results[0];
 	};
-	
+
 	EvolutionTrainer<> trainer;
 
 	if (!trainer.FromFile("D:\\Tetris_Evo_NN.nnevo"))
 		trainer = EvolutionTrainer<>({ 255,510,350,250,50,7 }, 250, 0.01f, 0.001f, fitness);
 	else
 		trainer.SetFitnessFunction(fitness);
-	
-	trainer.SetMutationChance(0.1f);
-	trainer.SetMUtationRate(.1f);
+
+	trainer.SetMutationChance(0.01f);
+	trainer.SetMUtationRate(.01f);
 	trainer.SetAsync(true);
 	trainer.ResetHighScore();	//Let's reset the highscore so we see a bit more action
 
@@ -308,7 +314,7 @@ int main()
 		ourHighScore = trainer.GetHighScore();
 		if (trainer.HasNewHighScore())
 		{
-			for(int i=0;i<1;i++)
+			for (int i = 0; i < 1; i++)
 				PlayGame(trainer.GetChampion(), true);	//Visualise the Champion playing
 		}
 		cout << trainer.GetWorstOfGen() << " / " << trainer.GetAverage() << " / " << trainer.GetBestOfGen() << " / " << trainer.GetHighScore() << (trainer.GetChampionChanged() ? " *" : " ") << endl;
@@ -316,6 +322,91 @@ int main()
 
 
 	}
+}
+
+void CollectTrainingData()
+{
+	TrainingSet<float> trainingData(255, 7);
+
+	TetrisSim sim;
+	sim.OnEsc();
+
+	int button;
+	int lastbutton=6;
+	float input[262];
+	trainingData.FromFile("D:\\TetrisTrainingData.nntd");
+
+	while (!sim.IsGameOver() && sim.GetFrameCounter() < 36000)	//Restrict time to 2h of simulated playtime, as apparently some AIs think it's funny to rotate pieces on the ground to exploit the bounds correction!
+	{
+		ConsoleDraw::cls();
+
+		DrawGame(sim);
+		cout << "Output: ";
+		cin >> button;
+		switch (button)
+		{
+		case 0: sim.OnLeft(); break;
+		case 1: sim.OnRight(); break;
+		case 2: sim.OnA(); break;
+		case 3: sim.OnB(); break;
+		case 4: sim.OnDown(); break;
+		case 5: sim.OnUp(); break;
+		default:
+			break;	//In theory waiting is the same thing as dropping once
+		}
+
+		PrepareInput(sim, input, lastbutton);
+
+		for (int i = 0; i < 7; i++)
+			if (i == button)
+				input[i+255] = 1;
+			else 
+				input[i+255] = 0;
+
+		trainingData.AddTrainingData(255, 7, input);
+		trainingData.SaveToFile("D:\\TetrisTrainingData.nntd");
+		lastbutton = button;
+		sim.Update(0.f, true);
+		
+	}
+}
+
+void TestTrainingData()
+{
+
+	NeuroNetTrainingWrapperBP<float, NeuroNetFloat> bp({ 255,255,255,255,7 });
+	TrainingSet<float> td;
+	td.FromFile("D:\\TetrisTrainingData.nntd");
+	bp.SetTrainingData(td);
+	NeuroNetBase<float>* neuro = bp.GetNeuroNet();
+
+	while (true)
+	{
+		float e = bp.TrainBatch(.4f, 10000);
+		cout << e << endl;
+		//PlayGame(*neuro);
+		bp.GetNeuroNet()->SaveToFile("D:\\BP_Trainer_AI");
+		//bp.TrainRandom(0.5f, 200);
+	}
+
+}
+
+void testTrainedAI()
+{
+	auto ai = NeuroNetFloat::CreateFromFile("D:\\BP_Trainer_AI");
+	PlayGame(*ai);
+}
+
+int main()
+{
+	ConsoleDraw::SetTargetFPS(120);
+	ConsoleDraw::SetCursorVisibility(false);
+
+	std::cout << "Tetris NeuroNet Trainer" << endl;
+
+	//EvoTraining();
+	//CollectTrainingData();
+	TestTrainingData();
 
 	std::cout << "Game Over" << endl;
 }
