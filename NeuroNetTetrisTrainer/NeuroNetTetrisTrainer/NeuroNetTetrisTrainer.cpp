@@ -54,7 +54,6 @@ void DrawNext(TetrisSim& sim)
 }
 void DrawGame(TetrisSim& sim)
 {
-
 	cout << "                          " << endl;
 	cout << "Score: " << sim.myScore << endl;
 	cout << "HighScore: " << ourHighScore << endl;
@@ -90,10 +89,11 @@ void Draw(TetrisSim& sim, int button, const float* anOutput)
 	DrawNext(sim);
 	ConsoleDraw::SetCursorPosition(0, 1);
 	
-	cout << endl;
 	for (int i = 0; i < 7; i++)
 		cout << anOutput[i] << "; ";
-
+	
+	cout << endl;
+	
 	for (int i = 0; i < 6; i++)
 		DrawButton(i, button);
 
@@ -120,6 +120,7 @@ float twoBool2float(bool a, bool b)
 int ourInputCount = 0;
 void PrepareInput(TetrisSim& aSim, float* anOutInput, int lastAction)
 {
+	float* wr = anOutInput;
 	//Start with the field (200)
 	for (int y = 0; y < HEIGHT; y++)
 	{
@@ -127,8 +128,8 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput, int lastAction)
 		{
 			int w = aSim.GetTile(x, y);
 			int wo = aSim.GetTile(x, y, true);
-			*anOutInput = twoBool2float(w>0, wo>0);	//TODO: This actually includes the "our tile" tiles, not the pure game situation. Maybe already enough though...
-			anOutInput++;
+			*wr = twoBool2float(w>0, wo>0);	//TODO: This actually includes the "our tile" tiles, not the pure game situation. Maybe already enough though...
+			wr++;
 		}
 	}
 
@@ -137,46 +138,46 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput, int lastAction)
 	int piece = aSim.GetCurrentPiece();
 	for (int p = 0; p < 8; p++)
 	{
-		*anOutInput = bool2float(piece == p);
-		anOutInput++;
+		*wr = bool2float(piece == p);
+		wr++;
 	}
 
 	//next piece (8; incl. "none")
 	piece = aSim.GetNextPiece();
 	for (int p = 0; p < 8; p++)
 	{
-		*anOutInput = bool2float(piece == p);
-		anOutInput++;
+		*wr = bool2float(piece == p);
+		wr++;
 	}
 
 	//xPos (10; from -1 to 8(incl))
 	int x = aSim.GetCurrentX();
 	for (int p = -1; p < WIDTH-1; p++)
 	{
-		*anOutInput = bool2float(x == p);
-		anOutInput++;
+		*wr = bool2float(x == p);
+		wr++;
 	}
 
 	//yPos(19; from 0 to 18, as being in idx 18 makes the bottom part always be on the ground)
 	int y = aSim.GetCurrentY();
 	for (int p = -1; p < HEIGHT-2; p++)	//17 is the last Y coordinate
 	{
-		*anOutInput = bool2float(y == p);
-		anOutInput++;
+		*wr = bool2float(y == p);
+		wr++;
 	}
 	
 	//Rotation (4)
 	int r = aSim.GetCurrentRotation();
 	for (int p = 0; p < 4; p++)
 	{
-		*anOutInput = bool2float(r == p);
-		anOutInput++;
+		*wr = bool2float(r == p);
+		wr++;
 	}
 
 	for (int p = 0; p < 6; p++)
 	{
-		*anOutInput = bool2float(lastAction == p);
-		anOutInput++;
+		*wr = bool2float(lastAction == p);
+		wr++;
 	}
 	//Total inputsize (est. )
 		// 200 tiles
@@ -189,46 +190,48 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput, int lastAction)
 		//255 inputs
 }
 
+const bool ourRandomSuggestion = true;
 int ProcessOutput(TetrisSim& aSim, const float* anOutput)
 {
 	//lets try to take the "suggested" thing first
 	float maxScore = 0.0;//*std::max_element(anOutput, anOutput+7, [](float a, float b) { return a < b; });
 	int suggestion = 6;//Do nothing
-	/*float highScores[7];
 
-	float epsilon = 0.03f;
 
-	for (int i = 0; i < 7; i++)
-		if (abs(anOutput[i] / maxScore) > 1.f-epsilon)
-			highScores[i] = anOutput[i];
-		else
-			highScores[i] = 0.f;*/
-/*
-
-	float sum = 0.0f;
-	for (int i = 0; i < 7; i++)
-		sum += anOutput[i];
-	
-	
-	
-	float pickRand = RandomHelper::Rand(0.0f, sum);
-	
-	for (int i = 0; i < 7; i++)
+	if (ourRandomSuggestion)
 	{
-		pickRand -= anOutput[i];
-		if (pickRand < 0)
+		float sum = 0.0f;
+		for (int i = 0; i < 7; i++)
+			sum += anOutput[i];
+
+
+
+		float pickRand = RandomHelper::Rand(0.0f, sum);
+
+		for (int i = 0; i < 7; i++)
 		{
-			suggestion = i;
-			break;
+			pickRand -= anOutput[i];
+			if (pickRand < 0)
+			{
+				if (anOutput[i] >= 0.01)
+				{
+					suggestion = i;
+					break;
+				}
+			}
+
 		}
-		
-	}*/
-	for(int i=0; i<6;i++)
-		if (maxScore <= anOutput[i])
-		{
-			suggestion = i;
-			maxScore = anOutput[i];
-		}
+	}
+	else
+	{
+
+		for (int i = 0; i < 6; i++)
+			if (maxScore <= anOutput[i])
+			{
+				suggestion = i;
+				maxScore = anOutput[i];
+			}
+	}
 
 
 
@@ -247,17 +250,19 @@ int ProcessOutput(TetrisSim& aSim, const float* anOutput)
 	return suggestion;
 }
 
-float PlayGame(NeuroNetFloat& brain, bool draw = true)
+float PlayGame(NeuroNetFloat& brain, bool draw = true, bool det = true)
 {
 	TetrisSim sim;
+	sim.SetDeterministicPieces(det);
 	sim.OnEsc();
 	if (draw)
 		ConsoleDraw::cls();
 	int button = 6;
+	float inputs[255];
 	while (!sim.IsGameOver() && sim.GetFrameCounter() < 36000)	//Restrict time to 2h of simulated playtime, as apparently some AIs think it's funny to rotate pieces on the ground to exploit the bounds correction!
 	{
-		PrepareInput(sim, brain.GetInput(), button);
-		brain.Calculate();
+		PrepareInput(sim, inputs, button);
+		brain.Calculate(inputs);
 		const float* output = brain.GetOutput();
 		button = ProcessOutput(sim, output);
 		for (int i = 0; i < 7; i++)
@@ -273,11 +278,6 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true)
 
 
 #define NUM_GAMES_FOR_SCORE 1
-int main()
-{
-	ConsoleDraw::SetTargetFPS(60);
-	ConsoleDraw::SetCursorVisibility(false);
-
 void EvoTraining()
 {
 	EvolutionTrainer<>::FitnessFunction fitness = [](NeuroNetFloat& brain) {
@@ -330,6 +330,23 @@ void EvoTraining()
 
 void CollectTrainingData()
 {
+	//TODO: When choosing 5, we should play a series of tetris frames until the block dropped. The targets of the data should contain 5(instadrop), 4(drop) and 6(idle)
+	// also any 4 should also add 6 to the target data
+	// Maybe it'd also be wise, to allow some syntax when entering the output string, (something like space split 0 1 5 3) for better "it doesn't matter" situations. 
+	// The actually played move can then be rendered
+	
+	// Another remark: we should probably not go for 0 and 1 as targets. It's probably safer/easier for the training to target 0.001 and 0.99
+	/*
+	
+	Table of shortcuts:
+	5 = 4 5 6
+	4 = 4 6
+	6 = 4 6
+	
+	
+	
+	
+	*/
 	TrainingSet<float> trainingData(255, 7);
 
 	TetrisSim sim;
@@ -337,39 +354,70 @@ void CollectTrainingData()
 
 	int button;
 	int lastbutton=6;
-	float input[262];
-	trainingData.FromFile("D:\\TetrisTrainingData.nntd");
-
+	float data[262];
+	if (trainingData.FromFile("D:\\TetrisTrainingData.nntd"))
+		cout << "Successfully Loaded TrainingData from file" << endl;
+	
 	while (!sim.IsGameOver() && sim.GetFrameCounter() < 36000)	//Restrict time to 2h of simulated playtime, as apparently some AIs think it's funny to rotate pieces on the ground to exploit the bounds correction!
 	{
 		ConsoleDraw::cls();
-
+		ConsoleDraw::SetCursorPosition(0, 1);
+		DrawNext(sim);
+		ConsoleDraw::SetCursorPosition(0, 1);
 		DrawGame(sim);
 		cout << "Output: ";
 		cin >> button;
+	
+		PrepareInput(sim, data, lastbutton);
+
+
+		const float press = 0.99f;
+		const float dontpress = 0.001f;
+
+		for (int i = 0; i < 7; i++)
+			data[i+255] = dontpress;
+
+		data[button + 255] = press; // = "PRESS"
+
+		if (button > 3)	//Set down and wait as well. also normalize the array.
+		{
+			float i = 2.f;
+			if (button == 5)
+			{
+				i += 1.f;
+				data[5 + 255] /= i;
+			}
+			
+			data[4 + 255] = data[6 + 255] = press/i;
+		}
+
+		trainingData.AddTrainingData(255, 7, data);
+		
+	
+		lastbutton = button;
+			   
 		switch (button)
 		{
 		case 0: sim.OnLeft(); break;
 		case 1: sim.OnRight(); break;
 		case 2: sim.OnA(); break;
 		case 3: sim.OnB(); break;
-		case 4: sim.OnDown(); break;
-		case 5: sim.OnUp(); break;
+		case 5: 
+		{
+			while (!sim.OnDown())	//simulate instadrop in simulation by manually dropping. Also add training data for each step.
+			{
+				PrepareInput(sim, data, 7);
+				trainingData.AddTrainingData(255, 7, data);
+			}
+			break;
+		}
+		case 4: 
+		case 6: sim.OnDown(); break; //simulate waiting for the auto-drop
 		default:
-			break;	//In theory waiting is the same thing as dropping once
+			break;	
 		}
 
-		PrepareInput(sim, input, lastbutton);
-
-		for (int i = 0; i < 7; i++)
-			if (i == button)
-				input[i+255] = 1;
-			else 
-				input[i+255] = 0;
-
-		trainingData.AddTrainingData(255, 7, input);
 		trainingData.SaveToFile("D:\\TetrisTrainingData.nntd");
-		lastbutton = button;
 		sim.Update(0.f, true);
 		
 	}
@@ -377,28 +425,51 @@ void CollectTrainingData()
 
 void TestTrainingData()
 {
-
-	NeuroNetTrainingWrapperBP<float, NeuroNetFloat> bp({ 255,255,255,255,7 });
-	TrainingSet<float> td;
-	td.FromFile("D:\\TetrisTrainingData.nntd");
-	bp.SetTrainingData(td);
+	bool replaceTrainingData = true;
+	NeuroNetTrainingWrapperBP<float, NeuroNetFloat> bp({ 255,200,100, 7 });	//bp({ 255,255,300,500,300,255,255,100,50,7 });
+	if (!bp.FromFile("D:\\BPTrainer.nnbp") || replaceTrainingData)
+	{
+		TrainingSet<float> td;
+		td.FromFile("D:\\TetrisTrainingData.nntd");
+		bp.SetTrainingData(td);
+	}
+	else
+		cout << "Successfully loaded from file" << endl;
+	
 	NeuroNetBase<float>* neuro = bp.GetNeuroNet();
-
+	
+	float lowScore = bp.TestBatch();	//Initial lowscore is first test
+	cout << "Initial Score: " << lowScore << endl <<endl;
+	float alpha = 0.5f;
+	
 	while (true)
 	{
-		float e = bp.TrainBatch(.4f, 10000);
-		cout << e << endl;
-		//PlayGame(*neuro);
-		bp.GetNeuroNet()->SaveToFile("D:\\BP_Trainer_AI");
-		//bp.TrainRandom(0.5f, 200);
+		//float pretest = bp.TestBatch();
+		
+		bp.TrainRandom(0.9f);
+		//bp.TrainBatch(0.9f);
+		//bp.TrainNext(0.01f);
+		float test = bp.TestBatch();
+
+		if(lowScore > test)
+		{
+			lowScore = test;
+			cout << endl << "New Score: " << lowScore << endl;
+			//cout << "\t Alpha: " << alpha << endl << endl;
+			bp.SaveToFile("D:\\BPTrainer.nnbp");
+			bp.GetNeuroNet()->SaveToFile("D:\\BP_Trainer_AI");
+			//PlayGame(*bp.GetNeuroNet());
+		}
 	}
 
 }
 
 void testTrainedAI()
 {
+	
 	auto ai = NeuroNetFloat::CreateFromFile("D:\\BP_Trainer_AI");
-	PlayGame(*ai);
+	while (true)
+	PlayGame(*ai, true, false);
 }
 
 int main()
@@ -411,6 +482,7 @@ int main()
 	//EvoTraining();
 	//CollectTrainingData();
 	TestTrainingData();
+	//testTrainedAI();
 
 	std::cout << "Game Over" << endl;
 }
