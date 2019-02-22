@@ -219,6 +219,9 @@ void TetrisSim::Clear()
  bool TetrisSim::DropBlock(bool preview) {
 	//Drop 1 line
 	myCurrentYPos++;
+	if(!preview)
+		myDropTimer = myDropSpeed;
+
 	if ((CheckCollision() || CheckBottomBounds()))
 	{
 		myCurrentYPos--;
@@ -248,12 +251,16 @@ void TetrisSim::Clear()
 
  int TetrisSim::RandomizePiece(int lastPiece)
  {
-	/*int next = RandomHelper::Rand32(1, 8);
-	if (next == lastPiece || next == 8)
-		return RandomHelper::Rand32(1, 7);
-	else
-		return next;*/
-	 return (lastPiece % 7) + 1;
+	 if(!myDeterministicRandom)
+	 {
+		 int next = RandomHelper::Rand32(1, 8);
+		 if (next == lastPiece || next == 8)
+			 return RandomHelper::Rand32(1, 7);
+		 else
+			 return next;
+
+	 }
+	 else return (lastPiece % 7) + 1;
  }
 
  bool TetrisSim::GetCurrentTetronimoTile(int x, int y)

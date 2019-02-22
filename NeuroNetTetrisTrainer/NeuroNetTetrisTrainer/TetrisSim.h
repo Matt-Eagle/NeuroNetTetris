@@ -10,6 +10,11 @@ public:
 	TetrisSim();
 	~TetrisSim();
 
+	void SetDeterministicPieces(bool det)
+	{
+		myDeterministicRandom = det;
+	}
+
 	int GetTile(int x, int y, bool hideCurrent = false)
 	{
 		if (!hideCurrent
@@ -30,7 +35,7 @@ public:
 	void OnRight() { if (!myIsGameOver) Move(1); }
 	void OnA() { if (!myIsGameOver) Turn(-1); }
 	void OnB() { if (!myIsGameOver) Turn(1); }
-	void OnDown() { if (!myIsGameOver) { DropBlock();	myDropTimer = myDropSpeed; } }
+	bool OnDown() { if (!myIsGameOver) { myDropTimer = myDropSpeed;  return DropBlock();	} }
 	void OnUp() { if (!myIsGameOver) { InstaDrop(); } }
 
 	void SpawnBlock();
@@ -62,6 +67,7 @@ private:
 	int myDropTimer = myDropSpeed;
 	
 	bool myIsGameOver = false;
+	bool myDeterministicRandom = false;
 
 	void Clear();
 
