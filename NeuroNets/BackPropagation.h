@@ -28,13 +28,14 @@ public:
 
 	NeuroNet GetNeuroNetClone() { return myNeuroNet; }
 	NeuroNet* GetNeuroNet() { return &myNeuroNet; }
+	TrainingSet<T>* GetTrainingSet(){ return &myTrainingSet; }
 
 	bool AddTrainingData(int anInputCount, int aTargetCount, const T* someData)
 	{
 		return myTrainingSet.AddTrainingData(anInputCount, aTargetCount, someData);
 	}
 
-	bool SetTrainingData(TrainingSet<T> aTrainingSet)
+	bool SetTrainingSet(TrainingSet<T> aTrainingSet)
 	{
 		myTrainingSet = aTrainingSet;
 		return true;
