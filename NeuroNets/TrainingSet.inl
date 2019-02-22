@@ -59,11 +59,11 @@ template<typename T>
 void TrainingSet<T>::MergeTrainingData()
 {
 	for (auto dest = myTrainingData.begin(); dest < myTrainingData.end()-1; dest++)
-		for(auto src = myTrainingData.begin()+1; src < myTrainingData.end(); src++)
+		for(auto src = dest+1; src < myTrainingData.end(); src++)
 		{
 			if(dest->TryMerge(*src))
 			{
-				iter_swap(src, myTrainingData.back());
+				swap(*src, myTrainingData.back());
 				myTrainingData.pop_back();
 			}
 		}
@@ -72,7 +72,12 @@ void TrainingSet<T>::MergeTrainingData()
 template<typename T>
 bool TrainingSet<T>::AddTrainingData(int anInputCount, int aTargetCount, const T* someData, bool autoMerge /*= true*/)
 {
-	if (myInputCount != anInputCount || myTargetCount != aTargetCount)
+	if (myInputCount == 0 && myTargetCount == 0)
+	{
+		myInputCount = anInputCount;
+		myTargetCount = aTargetCount;
+	}
+	else if (myInputCount != anInputCount || myTargetCount != aTargetCount)
 		return false;
 
 	if (autoMerge)
@@ -88,6 +93,49 @@ bool TrainingSet<T>::AddTrainingData(int anInputCount, int aTargetCount, const T
 	return true;
 }
 
+template<typename T>
+bool TrainingSet<T>::AddTrainingData(const TrainingData<T>& someData, bool autoMerge /*= true*/)
+{
+	//TODO: TrainingData must expose input and targetcount for sanity check
+
+	if (autoMerge)
+	{
+		for (auto& td : myTrainingData)
+		{
+			if (td.TryMerge(someData))
+				return true;
+		}
+	}
+
+	myTrainingData.push_back(someData);
+	return true;
+}
+
+template<typename T>
+bool TrainingSet<T>::AddTrainingData(const TrainingSet<T>& anOther, bool autoMerge /*= true*/)
+{
+	if (myInputCount != anOther.GetInputSize() || myTargetCount != anOther.GetOutputSize())
+		return false;
+
+	for (auto otd : anOther.myTrainingData)
+	{
+		bool merged = false;
+		if(autoMerge)
+		{	
+			for (TrainingData<T>& td : myTrainingData)
+			{
+				if (td.TryMerge(otd))
+				{
+					merged = true;
+					break;
+				}
+			}
+		}
+
+		if (!merged)
+			myTrainingData.push_back(otd);
+	}
+}
 
 template<typename T>
 bool TrainingSet<T>::SaveToFileInternal(ofstream& aFileStream) const

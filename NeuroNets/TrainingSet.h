@@ -71,6 +71,8 @@ public:
 	//LoadFromFile
 
 	bool AddTrainingData(int anInputCount, int aTargetCount, const T* someData, bool autoMerge = true);
+	bool AddTrainingData(const TrainingData<T>& someData, bool autoMerge = true);
+	bool AddTrainingData(const TrainingSet<T>& anOther, bool autoMerge = true);
 	void MergeTrainingData();
 
 	//Definition Getters
@@ -102,6 +104,5 @@ private:
 
 	vector<TrainingData<T>> myTrainingData;
 };
-
 
 #include "TrainingSet.inl"
