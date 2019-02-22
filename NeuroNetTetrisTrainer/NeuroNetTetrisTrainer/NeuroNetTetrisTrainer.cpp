@@ -34,9 +34,10 @@ char binToX(int i, int idx)
 {
 	return (i & (1 << idx)) ? 'X' : ' ';
 }
-void DrawNext(TetrisSim& sim)
+
+// Drawing "Next" Piece
+void DrawNext(int nextPiece)
 {
-	int nextPiece = Tetronimos::GetTetronimo(sim.GetNextPiece(),0);
 	ConsoleDraw::SetCursorPosition(14, 5);
 	cout << "Next: ";
 	ConsoleDraw::SetCursorPosition(14, 6);
@@ -52,6 +53,13 @@ void DrawNext(TetrisSim& sim)
 	for (int i = 0; i < 4; i++)
 		cout << binToX(nextPiece, 3-i);
 }
+
+void DrawNext(TetrisSim& sim)
+{
+	DrawNext(Tetronimos::GetTetronimo(sim.GetNextPiece(), 0));
+}
+
+// Drawing a playfield
 void DrawGame(TetrisSim& sim)
 {
 	cout << "                          " << endl;
@@ -79,6 +87,36 @@ void DrawGame(TetrisSim& sim)
 			}
 		}
 	}
+
+	cout << endl;
+
+}
+
+void DrawGame(const float* trainingData)
+{
+	for (int y = 0; y < HEIGHT; y++)
+	{
+		cout << endl << "  ";
+		for (int x = 0; x < WIDTH; x++)
+		{
+
+			int t = trainingData[x + y * WIDTH] > 0 ? 8 : 0;
+			switch (t)
+			{
+			case 0: cout << "."; break;
+			case 1: cout << "Z"; break;
+			case 2: cout << "S"; break;
+			case 3: cout << "O"; break;
+			case 4: cout << "I"; break;
+			case 5: cout << "L"; break;
+			case 6: cout << "J"; break;
+			case 7: cout << "T"; break;
+			default:
+				cout << "X"; break;
+				break;
+			}
+		}
+	}	
 
 	cout << endl;
 
@@ -173,12 +211,14 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput, int lastAction)
 		*wr = bool2float(r == p);
 		wr++;
 	}
-
+	/*//Last Input(6)
 	for (int p = 0; p < 6; p++)
 	{
 		*wr = bool2float(lastAction == p);
 		wr++;
 	}
+	*/
+	
 	//Total inputsize (est. )
 		// 200 tiles
 		// Current Tile (8 more inputs)
@@ -189,6 +229,7 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput, int lastAction)
 		
 		//255 inputs
 }
+#define INPUT_SIZE 249
 
 const bool ourRandomSuggestion = true;
 int ProcessOutput(TetrisSim& aSim, const float* anOutput)
@@ -243,8 +284,9 @@ int ProcessOutput(TetrisSim& aSim, const float* anOutput)
 	case 3: aSim.OnB(); break;
 	case 4: aSim.OnDown(); break;
 	case 5: aSim.OnUp(); break;
+	case 6: aSim.OnDown(); break;//In theory waiting is the same thing as dropping once
 	default:
-		 break;	//In theory waiting is the same thing as dropping once
+		 break;	
 	}
 
 	return suggestion;
@@ -258,7 +300,7 @@ float PlayGame(NeuroNetFloat& brain, bool draw = true, bool det = true)
 	if (draw)
 		ConsoleDraw::cls();
 	int button = 6;
-	float inputs[255];
+	float inputs[INPUT_SIZE];
 	while (!sim.IsGameOver() && sim.GetFrameCounter() < 36000)	//Restrict time to 2h of simulated playtime, as apparently some AIs think it's funny to rotate pieces on the ground to exploit the bounds correction!
 	{
 		PrepareInput(sim, inputs, button);
@@ -296,7 +338,7 @@ void EvoTraining()
 	EvolutionTrainer<> trainer;
 
 	if (!trainer.FromFile("D:\\Tetris\\Tetris_Evo_NN.nnevo"))
-		trainer = EvolutionTrainer<>({ 255,350,255,7 }, 250, 0.01f, 0.001f, fitness);
+		trainer = EvolutionTrainer<>({ INPUT_SIZE,350,255,7 }, 250, 0.01f, 0.001f, fitness);
 	else
 		trainer.SetFitnessFunction(fitness);
 	
@@ -328,7 +370,7 @@ void EvoTraining()
 	}
 }
 
-void CollectTrainingData()
+void CollectUserTrainingData()
 {
 	//TODO: When choosing 5, we should play a series of tetris frames until the block dropped. The targets of the data should contain 5(instadrop), 4(drop) and 6(idle)
 	// also any 4 should also add 6 to the target data
@@ -347,7 +389,7 @@ void CollectTrainingData()
 	
 	
 	*/
-	TrainingSet<float> trainingData(255, 7);
+	TrainingSet<float> trainingData(INPUT_SIZE, 7);
 
 	TetrisSim sim;
 	sim.OnEsc();
@@ -375,9 +417,9 @@ void CollectTrainingData()
 		const float dontpress = 0.001f;
 
 		for (int i = 0; i < 7; i++)
-			data[i+255] = dontpress;
+			data[i+INPUT_SIZE] = dontpress;
 
-		data[button + 255] = press; // = "PRESS"
+		data[button + INPUT_SIZE] = press; // = "PRESS"
 
 		if (button > 3)	//Set down and wait as well. also normalize the array.
 		{
@@ -385,13 +427,13 @@ void CollectTrainingData()
 			if (button == 5)
 			{
 				i += 1.f;
-				data[5 + 255] /= i;
+				data[5 + INPUT_SIZE] /= i;
 			}
 			
-			data[4 + 255] = data[6 + 255] = press/i;
+			data[4 + INPUT_SIZE] = data[6 + INPUT_SIZE] = press/i;
 		}
 
-		trainingData.AddTrainingData(255, 7, data);
+		trainingData.AddTrainingData(INPUT_SIZE, 7, data);
 		
 	
 		lastbutton = button;
@@ -407,7 +449,7 @@ void CollectTrainingData()
 			while (!sim.OnDown())	//simulate instadrop in simulation by manually dropping. Also add training data for each step.
 			{
 				PrepareInput(sim, data, 7);
-				trainingData.AddTrainingData(255, 7, data);
+				trainingData.AddTrainingData(INPUT_SIZE, 7, data);
 			}
 			break;
 		}
@@ -426,12 +468,12 @@ void CollectTrainingData()
 void TestTrainingData()
 {
 	bool replaceTrainingData = true;
-	NeuroNetTrainingWrapperBP<float, NeuroNetFloat> bp({ 255,200,100, 7 });	//bp({ 255,255,300,500,300,255,255,100,50,7 });
+	NeuroNetTrainingWrapperBP<float, NeuroNetFloat> bp({ INPUT_SIZE,200,100, 7 });	//bp({ INPUT_SIZE,255,300,500,300,255,255,100,50,7 });
 	if (!bp.FromFile("D:\\BPTrainer.nnbp") || replaceTrainingData)
 	{
 		TrainingSet<float> td;
 		td.FromFile("D:\\TetrisTrainingData.nntd");
-		bp.SetTrainingData(td);
+		bp.SetTrainingSet(td);
 	}
 	else
 		cout << "Successfully loaded from file" << endl;
@@ -463,6 +505,238 @@ void TestTrainingData()
 	}
 
 }
+//TODO: The whole curating could be exported into another class
+//Also TODO: there could be a group of tools for handling the AI stuff (basically all the functions here: AITester, TrainingDataCreator, etc)
+void normalize(float* data)
+{
+	float sum = 0.f;
+	for (int i = 0; i < 7; i++)
+		sum += data[i];
+
+	for (int i = 0; i < 7; i++)
+	{
+		data[i] /= sum;
+	}
+	//TODO: clamp between 0.001f and 0.99 while maintaining normalization
+}
+
+void CurateCleanup(TrainingData<float> td)
+{
+	char input[10];
+	cout << "       0123456"<<endl;
+	cout << "Enter: ";
+	cin >> input;
+	
+	float* targets = const_cast<float*>(td.GetTargets());
+	for (int i = 0; i < 7; i++)
+	{
+		if (input[i] == '-')
+			targets[i] = 0.001f;
+	}
+	normalize(targets);
+}
+void CurateEdit(TrainingData<float> td)
+{
+	char input[10];
+	cout << "       0123456" << endl;
+	cout << "Enter: ";
+	cin >> input;
+
+	float* targets = const_cast<float*>(td.GetTargets());
+	for (int i = 0; i < 7; i++)
+	{
+		float t = input[i] - '0';
+		if (t == 0)
+			t = 0.001f;
+		if (t > 0 && t <= 9)
+			targets[i] = t;
+	}
+	normalize(targets);
+}
+
+void SetTargetSingleOutput(float* outTarget, char button)
+{
+	int b = button - '0';
+	for (int i = 0; i < 7; i++)
+	{
+		if (b == i)
+			outTarget[i] = 0.99f;
+		else
+			outTarget[i] = 0.001f;
+	}
+}
+
+void CurateAdd(TrainingSet<float>& ts, TrainingData<float> td)
+{
+	float* input = const_cast<float*>(td.GetTargets());
+	int button;
+
+	cout << "Enter Button: ";
+	cin >> button;
+	SetTargetSingleOutput(input, button);
+	
+	ts.AddTrainingData(td);
+}
+
+
+
+void CurateTrainingSet(TrainingSet<float>& ts, int startIndex = 0)
+{
+	auto cur = ts.begin() + startIndex;
+	auto end = ts.end();
+	char mode[10];
+	while (cur < end)	//Curate single dataset
+	{
+		ConsoleDrawHelper::cls();
+
+		DrawGame(cur->GetInputs());
+		const float* targets = cur->GetTargets();
+		for (int i = 0; i < 7; i++)
+			cout << targets[i] << " ";
+
+		cout << endl << endl;
+
+		//TODO: write targets
+
+		cout << "Select Mode ([A]dd Data, [E]dit Data (overwrite), [C]lean wrongs, [N]ext, [P]revious, [S]kip, [Q]uit) > ";
+		cin >> mode;
+
+		switch (mode[0])
+		{
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+			SetTargetSingleOutput(const_cast<float*>(targets), mode[0]);
+			cur++;	//insta-advance
+			break;
+		case 'A':
+		case 'a':
+			CurateAdd(ts, *cur);
+			break;
+		case 'C':
+		case 'c':
+			CurateCleanup(*cur);
+			break;
+		case 'E':
+		case'e':
+			CurateEdit(*cur);
+			break;
+		case 'N':
+		case 'n':
+			cur++;
+			break;
+		case 'P':
+		case 'p':
+			cur--;
+			break;
+		case 'S':
+		case 's':
+			int s;
+			cout << "Skip how many? ";
+			cin >> s;
+			cur += s;
+			break;
+		case 'Q':
+		case 'q':
+			return;
+		default:
+			break;
+		}
+	}
+}
+
+void CurateTrainingSet(string file)
+{
+	TrainingSet<float> ts;
+	if(!ts.FromFile(file.c_str()))
+		return;
+
+	CurateTrainingSet(ts);
+
+}
+
+void CPUTrainingCuration(TrainingSet<float>& ts, NeuroNetFloat& brain)
+{	
+	{
+		TetrisSim sim;
+		sim.SetDeterministicPieces(false);
+		sim.OnEsc();
+		ConsoleDraw::cls();
+		int button = 6;
+		float inputs[262];
+		while (!sim.IsGameOver() && sim.GetFrameCounter() < 36000)	//Restrict time to 2h of simulated playtime, as apparently some AIs think it's funny to rotate pieces on the ground to exploit the bounds correction!
+		{
+			PrepareInput(sim, inputs, button);
+			brain.Calculate(inputs);
+			const float* output = brain.GetOutput();
+			for (int i = 0; i < 7; i++)
+				inputs[INPUT_SIZE + i] = output[i];
+
+			ts.AddTrainingData(INPUT_SIZE, 7, inputs);
+			button = ProcessOutput(sim, output);
+			for (int i = 0; i < 7; i++)
+			{
+				sim.Update(0.f, true);
+				Draw(sim, button, output);
+			}
+		}
+		//TODO: Implement question for a repeat play, in case the generated data seems pointless.
+	}
+	CurateTrainingSet(ts);
+}
+
+void CPUInteractiveTraining(string file)
+{
+	NeuroNetTrainingWrapperBP<float, NeuroNetFloat> bp({ INPUT_SIZE,200,100, 7 });	//bp({ INPUT_SIZE,255,300,500,300,255,255,100,50,7 });
+	bp.FromFile(file.c_str());
+	
+	TrainingSet<float>* ts = bp.GetTrainingSet();
+
+	auto brain = bp.GetNeuroNet();
+
+	char choice = 'y';
+	while (choice != 'n')
+	{
+		int trainSteps;
+
+		cout << "Current Score: " << bp.TestBatch() << endl;
+
+		cout << "How many training rounds? ";
+		cin >> trainSteps;
+		for (int i = 0; i < trainSteps; i++)
+		{
+			bp.TrainBatch(0.9f);
+			cout << "Current Score: " << bp.TestBatch() << endl;
+		}
+
+		cout << endl << "Save? (y/n) ";
+		cin >> choice;
+		if (choice == 'y' || choice == 'Y')
+			bp.SaveToFile(file.c_str());
+
+		TrainingSet<float> newTS;
+		CPUTrainingCuration(newTS, *brain);
+		
+		cout << "Merge results to original TrainingSet? (y/n)";
+		cin >> choice;
+		if (choice == 'y' || choice == 'Y')
+		{
+			ts->AddTrainingData(newTS);
+		}
+
+		cout << endl << "Save? (y/n) ";
+		cin >> choice;
+		if (choice == 'y' || choice == 'Y')
+			bp.SaveToFile(file.c_str());
+
+		cout << "Continue? (y/n) ";
+		cin >> choice;
+	}
+}
 
 void testTrainedAI()
 {
@@ -480,9 +754,13 @@ int main()
 	std::cout << "Tetris NeuroNet Trainer" << endl;
 
 	//EvoTraining();
-	//CollectTrainingData();
-	TestTrainingData();
+	//CollectUserTrainingData();
+	//TestTrainingData();
 	//testTrainedAI();
+
+
+	//CurateTrainingSet("D:\\CurTrainingData.nntd");
+	CPUInteractiveTraining("D:\\AutoTrainer.nnbp");
 
 	std::cout << "Game Over" << endl;
 }
