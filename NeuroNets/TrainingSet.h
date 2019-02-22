@@ -79,7 +79,7 @@ public:
 	int GetOutputSize() const { return myTargetCount; }
 	
 	//Iterators
-	std::size_t size() { return myTrainingData.size(); };
+	std::size_t size() const { return myTrainingData.size(); };
 	using iterator = typename vector<TrainingData<T>>::iterator;
 	using const_iterator = typename vector<TrainingData<T>>::const_iterator;
 

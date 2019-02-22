@@ -40,13 +40,19 @@ public:
 	int GetOutputCount() const { return myNodeCounts[myLayerCount - 1]; }
 	
 	//Use
-	const T* Calculate(const T* someInputs);
+	const T* Calculate(const T* someInputs) const;
 	
-	void SetInput(const T* someInputs);
-	void Calculate();
+	void SetInput(const T* someInputs) const;
+	void Calculate() const;
 	const T* GetOutput() const;
-	T* GetInput();
+	T* GetInput() const;
 
+	T* SwapWeights(T* someNewWeights) { 
+		//assumes that the old weights' deallocation is taken care of by caller
+		T* tmp = myWeights;
+		myWeights = someNewWeights;
+		return tmp;
+	}
 private:
 
 	
@@ -58,7 +64,7 @@ private:
 	T* myWeights;
 
 	//Runtime Data
-	T* myData;
+	mutable T* myData;
 	const T* myOutputData;
 	
 	//ISelfCreator

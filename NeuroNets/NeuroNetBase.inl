@@ -76,14 +76,14 @@ NeuroNetBase<T, AF>::~NeuroNetBase()
 
 
 template<typename T, typename AF>
-void NeuroNetBase<T, AF>::SetInput(const T* someInputs)
+void NeuroNetBase<T, AF>::SetInput(const T* someInputs) const
 {
 	memcpy(myData, someInputs, myNodeCounts[0] * sizeof(T));
 }
 
 
 template<typename T, typename AF>
-void NeuroNetBase<T, AF>::Calculate()
+void NeuroNetBase<T, AF>::Calculate() const
 {
 	//TODO: Investigate Matrix Multiplication as an alternative calculation approach
 
@@ -120,9 +120,12 @@ void NeuroNetBase<T, AF>::Calculate()
 
 
 template<typename T, typename AF>
-const T* NeuroNetBase<T, AF>::Calculate(const T* someInputs)
+const T* NeuroNetBase<T, AF>::Calculate(const T* someInputs) const
 {
-	SetInput(someInputs);  Calculate(); return myOutputData;
+	SetInput(someInputs);  
+	Calculate(); 
+	
+	return myOutputData;
 }
 
 template<typename T, typename AF>
@@ -132,7 +135,7 @@ const T* NeuroNetBase<T, AF>::GetOutput() const
 }
 
 template<typename T/*=float*/, typename AF /*= AF_Sigmoid<T>*/>
-T* NeuroNetBase<T, AF>::GetInput()
+T* NeuroNetBase<T, AF>::GetInput() const
 {
 	return myData;
 }

@@ -9,12 +9,18 @@ NeuroNetTrainingWrapperBP<T, NeuroNet>::NeuroNetTrainingWrapperBP(initializer_li
 	, myNextTrainingIndex(0)
 {
 	myNeuroNet.FillRandom();
+	NN_GET(TotalNodeCount, myNeuroNet);
+	NN_GET(TotalWeightCount, myNeuroNet);
+	NN_GET(Weights, myNeuroNet);
+
+	nodeDeltas = new T[nnTotalNodeCount];
+	newWeights = new T[nnTotalWeightCount];
+	memcpy(newWeights, nnWeights, nnTotalWeightCount * sizeof(T));
 }
 
 template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
  T NeuroNetTrainingWrapperBP<T, NeuroNet>::TrainBatch(T anAlpha, unsigned int aCount /*= 0*/)
 {	
-	T result = 0;
 	size_t setSize = myTrainingSet.size();
 
 	if (setSize == 0)
@@ -23,6 +29,7 @@ template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 	if (aCount == 0)
 		aCount = static_cast<unsigned int>(setSize);
 
+	//TODO: index based instead of iterator based?
 	auto it = myTrainingSet.cbegin() + myNextTrainingIndex;
 	auto endAt = myTrainingSet.cbegin() + ((myNextTrainingIndex + aCount) % setSize);
 
@@ -33,15 +40,15 @@ template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 		if (it == endAt)
 			fullRounds--;
 
-		result += TrainBP(myNeuroNet, it->GetInputs(), it->GetTargets(), anAlpha);
-		
+		TrainBP(myNeuroNet, it->GetInputs(), it->GetTargets(), anAlpha);
+
 		if (++it == myTrainingSet.cend())
 			it = myTrainingSet.cbegin();
 	}
 
 	myNextTrainingIndex = it - myTrainingSet.cbegin();
 
-	return result / aCount;
+	return 0;
 }
 
  template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
@@ -52,13 +59,16 @@ template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 	 auto it = myTrainingSet.cbegin() + myNextTrainingIndex;
 	 myNextTrainingIndex = (++myNextTrainingIndex) % myTrainingSet.size();
 	 
-	 return result += TrainBP(myNeuroNet, it->myInput, it->myTarget, anAlpha);
+	 return result += TrainBP(myNeuroNet, it->GetInputs(), it->GetInputs(), anAlpha);
  }
 
  template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
  T NeuroNetTrainingWrapperBP<T, NeuroNet>::TrainRandom(T anAlpha, unsigned int aCount)
  {
 	 T result = 0;
+	 if (aCount == 0)
+		 aCount = myTrainingSet.size();
+
 	 for (unsigned int i = 0; i < aCount; i++)
 	 {
 		 TrainingData<T>& td = myTrainingSet.GetRandomData();
@@ -67,7 +77,7 @@ template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 	 return result / aCount;
  }
 
-template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
+ template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
 T NeuroNetTrainingWrapperBP<T, NeuroNet>::TrainBP(NeuroNet& aNeuroNet, const T* someInputs, const T* someTargets, T anAlpha)
 {
 	// Get internals of NN with macro magic
@@ -81,17 +91,11 @@ T NeuroNetTrainingWrapperBP<T, NeuroNet>::TrainBP(NeuroNet& aNeuroNet, const T* 
 	if (nnLayerCount <= 1)
 		return -1;
 	
-	T* nodeDeltas = new T[nnTotalNodeCount];
-
 	const T* result = aNeuroNet.Calculate(someInputs);
+	
+	
 
-	T totalError = 0;
-	for (int i = 0; i < aNeuroNet.GetOutputCount(); i++)
-		totalError += pow((result[i] - someTargets[i]), 2) / 2;
-
-
-	T* newWeights = new T[nnTotalWeightCount];
-	memcpy(newWeights, nnWeights, nnTotalWeightCount * sizeof(T));
+	//memcpy(newWeights, nnWeights, nnTotalWeightCount * sizeof(T));//TODO: replace pointer inside NN instead of expensive memcopy. This will also allow proper alpha usage for momentum implementation
 
 
 	//Walk backwards through the nodes / weights
@@ -102,7 +106,7 @@ T NeuroNetTrainingWrapperBP<T, NeuroNet>::TrainBP(NeuroNet& aNeuroNet, const T* 
 
 	int destNodeLocalIdx = nnNodeCounts[destLayerIndex] - 1;
 	int destNodeGlobalIndex = nnTotalNodeCount;
-	int weightIdx = nnTotalWeightCount;
+	int weightIdx = nnTotalWeightCount -1;
 
 	T* destLayerWeightsBase = nnWeights;	//used to get the output weights of the destNode towards the next Layer.
 
@@ -136,14 +140,15 @@ T NeuroNetTrainingWrapperBP<T, NeuroNet>::TrainBP(NeuroNet& aNeuroNet, const T* 
 		//Adjust the Weights
 		{
 			//As we're iterating backwards, the bias is the first weight we encounter...
-			newWeights[--weightIdx] -= (delta*anAlpha);
+			newWeights[weightIdx--] = CalculateNewWeight(newWeights[weightIdx], nnWeights[weightIdx], delta/* *1 (bias) */, anAlpha);
 
 			//... then the Source Nodes.
-			T* srcNode = destLayer - 1;
+			T* srcNode = destLayer - 1;	//TODO: Check if you can efficiently (and without unreadable code) change this to an index based loop as well.
 			T* srcLayer = destLayer - nnNodeCounts[destLayerIndex - 1];
 
 			while (srcNode >= srcLayer)
-				newWeights[--weightIdx] -= delta * *srcNode--;
+				newWeights[weightIdx--] = CalculateNewWeight(newWeights[weightIdx], nnWeights[weightIdx], delta* *srcNode--, anAlpha);
+			
 		}
 
 		if (--destNodeLocalIdx < 0)
@@ -157,31 +162,47 @@ T NeuroNetTrainingWrapperBP<T, NeuroNet>::TrainBP(NeuroNet& aNeuroNet, const T* 
 		}
 	}
 
-	memcpy(nnWeights, newWeights, nnTotalWeightCount * sizeof(T));
-
-	delete[] newWeights;
-	delete[] nodeDeltas;
-
-	return totalError;
+	newWeights = aNeuroNet.SwapWeights(newWeights);
+	//memcpy(nnWeights, newWeights, nnTotalWeightCount * sizeof(T));	//TODO: replace pointer inside NN instead of expensive memcopy. This will also allow proper alpha usage for momentum implementation
+	
+	return 0;
 }
 
 
 
 template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
-T NeuroNetTrainingWrapperBP<T, NeuroNet>::Test(T* someInputs, T* someTargets)
+T NeuroNetTrainingWrapperBP<T, NeuroNet>::Test(const T* someInputs, const T* someTargets) const
 {
 	const T* result = myNeuroNet.Calculate(someInputs);
 
 	T MSE = 0;
 	for (int i = 0; i < myNeuroNet.GetOutputCount(); i++)
-	{
 		MSE += pow(result[i] - someTargets[i], 2);
-		someTargets[i] = result[i];
-	}
+	
 	MSE /= myNeuroNet.GetOutputCount();
 
 	return MSE;
 }
+
+template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
+T NeuroNetTrainingWrapperBP<T, NeuroNet>::TestBatch(unsigned int aCountLimit /*= 0*/) const
+{
+	T avgMSE = 0;
+
+	auto it = myTrainingSet.cbegin();
+	auto endAt = myTrainingSet.cend();
+	
+	while (it < endAt)
+	{
+		avgMSE += Test(it->GetInputs(), it->GetTargets());
+		it++;
+	}
+
+	avgMSE /= myTrainingSet.size();
+
+	return avgMSE;
+}
+
 
 template<typename T, typename NeuroNet>
 inline bool NeuroNetTrainingWrapperBP<T, NeuroNet>::FromFileInternal(ifstream & aFileStream)
@@ -193,6 +214,19 @@ inline bool NeuroNetTrainingWrapperBP<T, NeuroNet>::FromFileInternal(ifstream & 
 		|| !myNeuroNet.FromFile(aFileStream)
 		|| !myTrainingSet.FromFile(aFileStream))
 		return false;
+
+	NN_GET(TotalNodeCount, myNeuroNet);
+	NN_GET(TotalWeightCount, myNeuroNet);
+	NN_GET(Weights, myNeuroNet);
+
+	if (nodeDeltas)
+		delete[] nodeDeltas;
+	nodeDeltas = new T[nnTotalNodeCount];
+
+	if (newWeights)
+		delete[] newWeights;
+	newWeights = new T[nnTotalWeightCount];
+	memcpy(newWeights, nnWeights, nnTotalWeightCount * sizeof(T));
 
 	return true;
 }

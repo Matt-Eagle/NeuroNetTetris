@@ -141,7 +141,7 @@ bool TrainingSet<T>::FromFileInternal(ifstream& aFileStream)
 		td.myData = new T[dataSize];
 
 		aFileStream.read((char*)&td.mySourceDataCount, sizeof(uint));
-		aFileStream.read((char*)td.myData, dataSize * sizeof(T));
+		aFileStream.read((char*)td.myData, dataSize * t_size);
 	}
 
 	return true;
