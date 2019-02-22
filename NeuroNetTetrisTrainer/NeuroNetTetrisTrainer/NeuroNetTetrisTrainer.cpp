@@ -3,6 +3,7 @@
 
 #include "pch.h"
 #include <iostream>
+#include <iomanip>
 #include "TetrisSim.h"
 #include "..\..\NeuroNets\NeuroNetBase.h"
 #include "..\..\NeuroNets\EvolutionTrainer.h"
@@ -15,20 +16,38 @@ static float ourHighScore = 0;
 
 void DrawButton(int button, int chosen)
 {
-	bool isPressed = (button == chosen);
-	cout << (isPressed ? "[" : " ");
+	string bName;
+
 	switch (button)
 	{
-	case 0: cout << "<-"; break;
-	case 1: cout << "->"; break;
-	case 2: cout << "A"; break;
-	case 3: cout << "B"; break;
-	case 4: cout << "v"; break;
-	case 5: cout << "^"; break;
+	case 0: bName = "<"; break;
+	case 1: bName = ">"; break;
+	case 2: bName = "A"; break;
+	case 3: bName = "B"; break;
+	case 4: bName = "v"; break;
+	case 5: bName = "^"; break;
+	case 6: bName = " "; break;
 	default:
+		bName = "X";
 		break;
 	}
-	cout << (isPressed ? "]" : " ");
+
+	bool isPressed = (button == chosen);
+
+	if (isPressed)
+		bName = "[" + bName + "]";
+	else
+		bName = " " + bName + " ";
+
+	cout << std::left << std::setw(6) << bName.c_str();
+}
+
+void DrawOutput(const float* data, int num = 7, int precision= 3)
+{
+	for (int i = 0; i < num; i++)
+		cout << std::fixed << std::setw(precision + 3) << std::setprecision(precision) << data[i];
+
+	cout << endl;
 }
 char binToX(int i, int idx)
 {
@@ -126,15 +145,13 @@ void Draw(TetrisSim& sim, int button, const float* anOutput)
 	ConsoleDraw::StartFrame();
 	DrawNext(sim);
 	ConsoleDraw::SetCursorPosition(0, 1);
+
+	DrawOutput(anOutput);
 	
 	for (int i = 0; i < 7; i++)
-		cout << anOutput[i] << "; ";
-	
-	cout << endl;
-	
-	for (int i = 0; i < 6; i++)
 		DrawButton(i, button);
 
+	cout << endl;
 	DrawGame(sim);
 
 	cout << endl;
@@ -166,7 +183,7 @@ void PrepareInput(TetrisSim& aSim, float* anOutInput, int lastAction)
 		{
 			int w = aSim.GetTile(x, y);
 			int wo = aSim.GetTile(x, y, true);
-			*wr = twoBool2float(w>0, wo>0);	//TODO: This actually includes the "our tile" tiles, not the pure game situation. Maybe already enough though...
+			*wr = twoBool2float(w>0, wo>0);	
 			wr++;
 		}
 	}
@@ -372,23 +389,6 @@ void EvoTraining()
 
 void CollectUserTrainingData()
 {
-	//TODO: When choosing 5, we should play a series of tetris frames until the block dropped. The targets of the data should contain 5(instadrop), 4(drop) and 6(idle)
-	// also any 4 should also add 6 to the target data
-	// Maybe it'd also be wise, to allow some syntax when entering the output string, (something like space split 0 1 5 3) for better "it doesn't matter" situations. 
-	// The actually played move can then be rendered
-	
-	// Another remark: we should probably not go for 0 and 1 as targets. It's probably safer/easier for the training to target 0.001 and 0.99
-	/*
-	
-	Table of shortcuts:
-	5 = 4 5 6
-	4 = 4 6
-	6 = 4 6
-	
-	
-	
-	
-	*/
 	TrainingSet<float> trainingData(INPUT_SIZE, 7);
 
 	TetrisSim sim;
@@ -520,7 +520,7 @@ void normalize(float* data)
 	//TODO: clamp between 0.001f and 0.99 while maintaining normalization
 }
 
-void CurateCleanup(TrainingData<float> td)
+void CurateCleanup(TrainingData<float>& td)
 {
 	char input[10];
 	cout << "       0123456"<<endl;
@@ -535,7 +535,7 @@ void CurateCleanup(TrainingData<float> td)
 	}
 	normalize(targets);
 }
-void CurateEdit(TrainingData<float> td)
+void CurateEdit(TrainingData<float>& td)
 {
 	char input[10];
 	cout << "       0123456" << endl;
@@ -545,11 +545,11 @@ void CurateEdit(TrainingData<float> td)
 	float* targets = const_cast<float*>(td.GetTargets());
 	for (int i = 0; i < 7; i++)
 	{
-		float t = input[i] - '0';
+		int t = input[i] - '0';
 		if (t == 0)
-			t = 0.001f;
-		if (t > 0 && t <= 9)
-			targets[i] = t;
+			targets[i] = 0.001f;
+		else if (t > 0 && t <= 9)
+			targets[i] = 0.11f*t;	//9= 0.99f = max
 	}
 	normalize(targets);
 }
@@ -566,10 +566,10 @@ void SetTargetSingleOutput(float* outTarget, char button)
 	}
 }
 
-void CurateAdd(TrainingSet<float>& ts, TrainingData<float> td)
+void CurateAdd(TrainingSet<float>& ts, TrainingData<float> td)	//Note takes editable copy of td as base for the Add
 {
 	float* input = const_cast<float*>(td.GetTargets());
-	int button;
+	char button;
 
 	cout << "Enter Button: ";
 	cin >> button;
@@ -578,7 +578,12 @@ void CurateAdd(TrainingSet<float>& ts, TrainingData<float> td)
 	ts.AddTrainingData(td);
 }
 
-
+void CurateRepeat(TrainingData<float>& tdDest, const TrainingData<float>& tdSrc)
+{
+	float* dest = const_cast<float*>(tdDest.GetTargets());
+	const float* src = tdSrc.GetTargets();
+	memcpy(dest, src, 7*sizeof(float));
+}
 
 void CurateTrainingSet(TrainingSet<float>& ts, int startIndex = 0)
 {
@@ -589,16 +594,30 @@ void CurateTrainingSet(TrainingSet<float>& ts, int startIndex = 0)
 	{
 		ConsoleDrawHelper::cls();
 
+		const float* nextPieceInputData = cur->GetInputs() + 208;
+			int p = 0;
+			for (; p < 8; p++)
+				if (nextPieceInputData[p] > 0.f)
+					break;
+		p = Tetronimos::GetTetronimo(Tetronimo(p), 0);
+		DrawNext(p);	//208 is the offset of "Next piece" in the input data
+		ConsoleDraw::SetCursorPosition(0, 1);
 		DrawGame(cur->GetInputs());
-		const float* targets = cur->GetTargets();
+
+		DrawOutput(cur->GetTargets());
+		int chosen[7];
 		for (int i = 0; i < 7; i++)
-			cout << targets[i] << " ";
+			if (cur->GetTargets()[i] > 0.1)
+				chosen[i] = i;
+			else
+				chosen[i] = 8;
+		for (int i = 0; i < 7; i++)
+			DrawButton(i,chosen[i]);
 
 		cout << endl << endl;
 
-		//TODO: write targets
 
-		cout << "Select Mode ([A]dd Data, [E]dit Data (overwrite), [C]lean wrongs, [N]ext, [P]revious, [S]kip, [Q]uit) > ";
+		cout << "Select Mode ([A]dd Data, [E]dit Data (overwrite), [C]lean wrongs, [R]epeat previous, [N]ext, [P]revious, [S]kip, [Q]uit) > ";
 		cin >> mode;
 
 		switch (mode[0])
@@ -610,7 +629,7 @@ void CurateTrainingSet(TrainingSet<float>& ts, int startIndex = 0)
 		case '4':
 		case '5':
 		case '6':
-			SetTargetSingleOutput(const_cast<float*>(targets), mode[0]);
+			SetTargetSingleOutput(const_cast<float*>(cur->GetTargets()), mode[0]);
 			cur++;	//insta-advance
 			break;
 		case 'A':
@@ -624,6 +643,7 @@ void CurateTrainingSet(TrainingSet<float>& ts, int startIndex = 0)
 		case 'E':
 		case'e':
 			CurateEdit(*cur);
+			cur++;
 			break;
 		case 'N':
 		case 'n':
@@ -632,6 +652,12 @@ void CurateTrainingSet(TrainingSet<float>& ts, int startIndex = 0)
 		case 'P':
 		case 'p':
 			cur--;
+			break;
+		case 'R':
+		case 'r':
+			if(cur != ts.begin())
+			CurateRepeat(*cur, *(cur - 1));
+			cur++;
 			break;
 		case 'S':
 		case 's':
@@ -659,9 +685,14 @@ void CurateTrainingSet(string file)
 
 }
 
+//Warning: cleats Trainingset ts
 void CPUTrainingCuration(TrainingSet<float>& ts, NeuroNetFloat& brain)
-{	
+{
+	char repeat;
+
+	do
 	{
+		ts.Clear();
 		TetrisSim sim;
 		sim.SetDeterministicPieces(false);
 		sim.OnEsc();
@@ -684,8 +715,12 @@ void CPUTrainingCuration(TrainingSet<float>& ts, NeuroNetFloat& brain)
 				Draw(sim, button, output);
 			}
 		}
-		//TODO: Implement question for a repeat play, in case the generated data seems pointless.
-	}
+
+		cout << endl << "Repeat Game? (y/n) ";
+		cin >> repeat;
+
+	} while (repeat == 'Y' || repeat == 'y');
+
 	CurateTrainingSet(ts);
 }
 
@@ -703,15 +738,18 @@ void CPUInteractiveTraining(string file)
 	{
 		int trainSteps;
 
-		cout << "Current Score: " << bp.TestBatch() << endl;
-
-		cout << "How many training rounds? ";
-		cin >> trainSteps;
-		for (int i = 0; i < trainSteps; i++)
+		do 
 		{
-			bp.TrainBatch(0.9f);
 			cout << "Current Score: " << bp.TestBatch() << endl;
-		}
+
+			cout << "How many training rounds? ";
+			cin >> trainSteps;
+			for (int i = 0; i < trainSteps; i++)
+			{
+				bp.TrainBatch(0.9f);
+				cout << "\t" << bp.TestBatch() << endl;
+			}
+		} while (trainSteps>0);
 
 		cout << endl << "Save? (y/n) ";
 		cin >> choice;
