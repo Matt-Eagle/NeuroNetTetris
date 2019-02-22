@@ -28,7 +28,13 @@ public:
 		, mySourceDataCount(0)
 	{}
 
-	inline const T* GetInputs() const { return myData; }
+	TrainingData(const TrainingData<T>& anOther, unsigned int aSourceDataCount = 0) //Copy construct
+		: TrainingData(anOther.myInputCount, anOther.myTargetCount, anOther.myData, anOther.mySourceDataCount )
+	{
+		if (aSourceDataCount > 0)
+			mySourceDataCount = aSourceDataCount;
+	}
+		inline const T* GetInputs() const { return myData; }
 	inline const T* GetTargets() const { return myData + myInputCount; }
 
 private:
@@ -57,8 +63,7 @@ public:
 	, myTargetCount(0)
 	{}
 	TrainingSet(int anInputCount, int anOutputCount);
-	//Move/Copy construct?/ destructor?
-	
+
 	//GetRandomSubSet(count?) -> might return a new instance of TrainingSet (maybe a class traininSubSet without destruction of our data?)
 		//	-> coulud be useful if we have 100000 datas, just gimme a subset of ~100 for a training session.
 	TrainingData<T>& GetRandomData()
@@ -74,6 +79,7 @@ public:
 	bool AddTrainingData(const TrainingData<T>& someData, bool autoMerge = true);
 	bool AddTrainingData(const TrainingSet<T>& anOther, bool autoMerge = true);
 	void MergeTrainingData();
+	void Clear() { myTrainingData.clear(); }
 
 	//Definition Getters
 	bool CheckSize(int anInputSize, int anOutputSize) const { return (anInputSize == myInputCount) && (anOutputSize == myTargetCount); }

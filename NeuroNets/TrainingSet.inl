@@ -54,7 +54,6 @@ TrainingSet<T>::TrainingSet(int anInputCount, int anOutputCount)
 	, myTargetCount(anOutputCount)
 { }
 
-
 template<typename T>
 void TrainingSet<T>::MergeTrainingData()
 {

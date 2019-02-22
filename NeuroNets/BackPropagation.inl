@@ -63,11 +63,11 @@ template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
  }
 
  template<typename T /*= float*/, typename NeuroNet /*= NeuroNetBase<T>*/>
- T NeuroNetTrainingWrapperBP<T, NeuroNet>::TrainRandom(T anAlpha, unsigned int aCount)
+ T NeuroNetTrainingWrapperBP<T, NeuroNet>::TrainRandom(T anAlpha, uint aCount)
  {
 	 T result = 0;
 	 if (aCount == 0)
-		 aCount = myTrainingSet.size();
+		 aCount = static_cast<uint>(myTrainingSet.size());
 
 	 for (unsigned int i = 0; i < aCount; i++)
 	 {
