@@ -31,6 +31,23 @@ struct Tetronimos
 		}
 	}
 
+	static int GetRotationCount(Tetronimo t)
+	{
+		{
+			switch (t)
+			{
+			case Z: return 2;
+			case S: return 2;
+			case O: return 1;
+			case I: return 2;
+			case L: return 4;
+			case J: return 4;
+			case T: return 4;
+			default: return 0;
+			}
+		}
+	}
+
 private:
 	/*
 	0000  0010

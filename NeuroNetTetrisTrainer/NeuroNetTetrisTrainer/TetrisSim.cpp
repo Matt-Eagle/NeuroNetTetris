@@ -189,9 +189,10 @@ void TetrisSim::Clear()
 
  void TetrisSim::Turn(int direction)
 {
-	myCurrentRotation = (myCurrentRotation + direction) % 4;
+	myCurrentRotation = (myCurrentRotation + direction);
 	if (myCurrentRotation < 0)
 		myCurrentRotation += 4;
+	myCurrentRotation %= Tetronimos::GetRotationCount(myCurrentBlock);
 
 	if (CheckCollision())
 	{
