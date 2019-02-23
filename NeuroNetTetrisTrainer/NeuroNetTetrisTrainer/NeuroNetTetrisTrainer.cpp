@@ -566,16 +566,23 @@ void SetTargetSingleOutput(float* outTarget, char button)
 	}
 }
 
-void CurateAdd(TrainingSet<float>& ts, TrainingData<float> td)	//Note takes editable copy of td as base for the Add
+void CurateAdd(TrainingSet<float>& ts, const TrainingData<float>& td)	//Note takes editable copy of td as base for the Add
 {
-	float* input = const_cast<float*>(td.GetTargets());
 	char button;
-
+	char weight;
 	cout << "Enter Button: ";
 	cin >> button;
+	cout << "Enter Weight" << *reinterpret_cast<const uint*>(td.GetInputs())-1 << ": ";	//Totally hacky to get the srcCount by moving a pointer inside the TrainingData class. Maybe it should have a getter.
+	cin >> weight;
+
+	TrainingData<float> newTD(td, weight);
+	float* input = const_cast<float*>(newTD.GetTargets());	//TODO: should we open up TrainingData with a Target setter? maybe a input setter? official modifier? could be useful to generate "similar data" at some point.
+	
+
+	
 	SetTargetSingleOutput(input, button);
 	
-	ts.AddTrainingData(td);
+	ts.AddTrainingData(newTD);
 }
 
 void CurateRepeat(TrainingData<float>& tdDest, const TrainingData<float>& tdSrc)
